@@ -20,14 +20,14 @@ expected = """
     from typing import Annotated
 
     class A:
-        name: Annotated[str, 'property']
+        name: Annotated[str, 'string']
     """
 
 p = parse(expected)
 
 print(p)
 
-an = ast_visitor.BaseVisitor(ast3)
-an.visit(p)
+#an = ast_visitor.BaseVisitor(ast3)
+#an.visit(p)
 
 

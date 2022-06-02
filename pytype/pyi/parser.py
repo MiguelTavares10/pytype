@@ -203,9 +203,12 @@ class AnnotationVisitor(visitor.BaseVisitor):
 
   def _convert_typing_annotated(self, node):
     typ, *args = self._get_subscript_params(node).elts
+    print(dir(node.ctx))
     typ = self.visit(typ)
+    print("__convert_typing_annotated",typ)
+    print(f" args =  {args} commands = {dir(args)}")
     params = (self.convert_metadata(x) for x in args)
-    print(params)
+    print(f"params =  {params} commands = {dir(params)}")
     self._set_subscript_params(node, (typ,) + tuple(params))
 
   def enter_Subscript(self, node):

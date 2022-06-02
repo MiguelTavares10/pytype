@@ -39,7 +39,8 @@ def parse_args():
 
 def main():
   opts = parse_args()
-  targets = opts.targets or ["test_all"]
+  #targets = opts.targets or ["test_all"]
+  targets = ["pytype.pyi.parser_test"]
   if not build_utils.run_cmake(log_output=True, debug_build=opts.debug):
     sys.exit(1)
   fail_collector = build_utils.FailCollector()

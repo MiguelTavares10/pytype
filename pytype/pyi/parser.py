@@ -205,6 +205,7 @@ class AnnotationVisitor(visitor.BaseVisitor):
     typ, *args = self._get_subscript_params(node).elts
     typ = self.visit(typ)
     params = (self.convert_metadata(x) for x in args)
+    print(params)
     self._set_subscript_params(node, (typ,) + tuple(params))
 
   def enter_Subscript(self, node):

@@ -17,6 +17,7 @@ class BaseVisitor:
     self._ast = ast
 
   def visit(self, node):
+    print("test")
     """Does a post-order traversal of the AST."""
     if isinstance(node, self._ast.AST):
       self.enter(node)

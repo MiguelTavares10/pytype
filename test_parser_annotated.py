@@ -20,7 +20,9 @@ expected = """
     from typing import Annotated
 
     class A:
-        name: Annotated[str, 'string']
+        x: Annotated[int, 'x>0']
+        y: Annotated[int,'y<0']
+        x = y
     """
 
 p = parse(expected)

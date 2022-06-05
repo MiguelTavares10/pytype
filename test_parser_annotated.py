@@ -1,7 +1,11 @@
+from asyncio import constants
 import textwrap
+from pytype.pyi.AnnotationHandler import AnnotationHandler
 from pytype.pyi import parser
 from pytype.ast import visitor as ast_visitor
 import sys
+
+from verification import Verification
 if sys.version_info >= (3, 8):
   import ast as ast3
 else:
@@ -16,18 +20,22 @@ def parse(src, name=None, version=None, platform="linux"):
     ast = parser.parse_string(src, name=name)
     return ast
 
+
+v = Verification()
 expected = """
     from typing import Annotated
-
-    class A:
-        x: Annotated[int, 'x>0']
-        y: Annotated[int,'y<0']
-        x = y
+    
+    x: Annotated[int, 'x>0']
+    y: Annotated[int,'y<0']
+    x = y
     """
 
-p = parse(expected)
+lines = expected.split("\n")
 
-print(p)
+for line in lines:
+  p = parse(line)
+  v.check_node(p)
+
 
 #an = ast_visitor.BaseVisitor(ast3)
 #an.visit(p)

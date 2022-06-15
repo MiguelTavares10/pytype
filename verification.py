@@ -15,7 +15,9 @@ class Verification:
         if not node.aliases == ():
             for al in node.aliases:
                 self.vars[al.name] = z3.Const(al.name,ZVar)
+                print(f"{al.name} added as const")
                 self.vars[al.type.name] = z3.Const(al.name,ZVar)
+                print(f"{al.type.name} added as const")
                 self.solver.add(self.vars[al.name] == self.vars[al.type.name])
                 print(f"{al.name} == {al.type.name}")
                 
@@ -25,10 +27,14 @@ class Verification:
                     self.annotations.append(newAn)
 
                     for var in self.vars.keys():
-                        if newAn.__contains__(var):
-                            locals()[var] = self.vars[var]
-                    self.solver.add(eval(newAn))
-                    print(self.solver.check())
+                        for an in newAn:
+                            print(f"{var} in {an} ?")
+                            if an.__contains__(var):
+                                print("var = {var}")
+                                locals()[var] = self.vars[var]
+                                print(f"{an} an added to solver")
+                                self.solver.add(eval(an))
+                                print(self.solver.check())
                     #print(self.solver.model())
 
 

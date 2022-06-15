@@ -1,0 +1,13 @@
+There is 2 major types of test:
+
+check
+Check inside test_base.py that uses run_program() inside check_types, that i tested on my_test_run_program.py in last week.
+
+
+check inside parser_test_base.py that uses the parser that i first used and tested on test_parser_annotated.py.
+I fixed a bug with that parser, that node.slice.value did not have the Annotation, but had a empty list.
+With this parser they just check for types, for exemple when i run the z = 1 the result just gives that the type is int
+
+
+
+

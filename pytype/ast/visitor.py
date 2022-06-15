@@ -18,7 +18,7 @@ class BaseVisitor:
 
   def visit(self, node):
     """Does a post-order traversal of the AST."""
-    if isinstance(node, self._ast.AST):
+    if isinstance(node, self._ast.AST):  
       self.enter(node)
       for k, v in self._children(node):
         ret = self.visit(v)
@@ -32,8 +32,7 @@ class BaseVisitor:
       for i, v in enumerate(node):
         ret = self.visit(v)
         if ret is not None:
-          node[i] = ret
-
+          node[i] = ret 
   def _children(self, node):
     """Children to recurse over."""
     node_children = {

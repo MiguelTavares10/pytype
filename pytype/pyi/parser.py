@@ -151,7 +151,9 @@ class AnnotationVisitor(visitor.BaseVisitor):
       raise e
 
   def convert_metadata(self, node):
+    print(f"node = {node.value}, type = {type(node)} ,dir do nome = {dir(node.value)}")
     ret = MetadataVisitor().visit(node)
+    print(f"ret = {ret}")
     return ret if ret is not None else node
 
   def visit_Pyval(self, node):
@@ -201,19 +203,25 @@ class AnnotationVisitor(visitor.BaseVisitor):
     if sys.version_info >= (3, 9):
       node.slice = new_val
     else:
+      print(f"node.slice.value = {new_val}")
       node.slice.value = new_val
 
   def _convert_typing_annotated(self, node):
     typ, *args = self._get_subscript_params(node).elts
     typ = self.visit(typ)
     anHandler = AnnotationHandler.getInstance()
+    argList = []
     for arg in args:
       print(f" arg = {arg.value}")
-      anHandler.add_annotation(arg.value)
+      argList.append(arg.value)
+    anHandler.add_annotation(argList)
 
     params = (self.convert_metadata(x) for x in args)
-
-    self._set_subscript_params(node, (typ,) + tuple(params))
+    for param in params:
+      print(f"param = {param}")
+      new_val = (typ,param)
+    self._set_subscript_params(node, new_val)
+    #self._set_subscript_params(node, (typ,) + tuple(params))
 
   def enter_Subscript(self, node):
     if isinstance(node.value, ast3.Attribute):

@@ -121,6 +121,7 @@ class Annotated(abstract.AnnotationClass):
       error = "typing.Annotated must have at least 1 annotation"
       self.ctx.errorlog.invalid_annotation(self.ctx.vm.frames, self, error)
     # discard annotations
+    inner[0].add_refinement(inner[1].pyval)
     return inner[0]
 
 

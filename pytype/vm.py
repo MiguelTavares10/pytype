@@ -1201,6 +1201,7 @@ class VirtualMachine:
   def byte_LOAD_CONST(self, state, op):
     try:
       raw_const = self.frame.f_code.co_consts[op.arg]
+      self.last_cond_const = {raw_const,"Const"}
     except IndexError:
       # We have tried to access an undefined closure variable.
       # There is an associated LOAD_DEREF failure where the error will be
@@ -1254,9 +1255,12 @@ class VirtualMachine:
       self.ctx.errorlog.name_error(self.frames, name, details=details)
       return self.ctx.convert.unsolvable
 
+
+  last_cond_const= ("None","None")
   def byte_LOAD_NAME(self, state, op):
     """Load a name. Can be a local, global, or builtin."""
     name = self.frame.f_code.co_names[op.arg]
+    last_cond_const = (name,"var")
     try:
       state, val = self.load_local(state, name)
     except KeyError:
@@ -1282,6 +1286,9 @@ class VirtualMachine:
 
   def byte_STORE_NAME(self, state, op):
     name = self.frame.f_code.co_names[op.arg]
+    print(f"{name} = {self.last_load_cond[0]}")
+    #TODO: check if the name is already annotated and send it info to verification
+    input()
     return self._pop_and_store(state, op, name, local=True)
 
   def byte_DELETE_NAME(self, state, op):
@@ -1716,8 +1723,12 @@ class VirtualMachine:
           name,
           self.simple_stack(),
           allowed_type_params=self.frame.type_params)
-      self._record_annotation(state.node, op, name, typ)
 
+      typ.add_var-name(name)
+      print(f"var = {name} refinement = {typ.refinement}")
+      #TODO: guardar variavel anotada e mandar para  verificação
+      input()
+      self._record_annotation(sss
   def byte_STORE_SUBSCR(self, state, op):
     """Implement obj[subscr] = val."""
     state, (val, obj, subscr) = state.popn(3)

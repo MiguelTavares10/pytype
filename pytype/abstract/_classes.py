@@ -526,6 +526,22 @@ class PyTDClass(
         slots=self.pytd_cls.slots,
         template=self.pytd_cls.template)
 
+class pyTDClassRefined(PyTDClass):
+
+  def __init__(self, name, pytd_cls, ctx):
+    super().__init__(name, pytd_cls, ctx)
+    self.refinement = "None"
+    self.varName = "None"
+
+
+  def __repr__(self):
+    return "PyTDClassRefined(%s)" % self.name
+
+  def add_var_name(self,name):
+    self.varName = name
+
+  def add_refinement(self,ref):
+    self.refinement = ref
 
 class FunctionPyTDClass(PyTDClass):
   """PyTDClass(Callable) subclass to support annotating higher-order functions.

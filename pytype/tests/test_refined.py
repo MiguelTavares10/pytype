@@ -10,15 +10,17 @@ class TestRefined(test_base.BaseTest):
     self.Check("""
       from typing_extensions import Annotated
       x: Annotated[int, "_ > 0"]
-      y: Annotated[int, "_ > 0"]
-      x = 1
+      y: Annotated[int, "_ > 1"]
+      x = 1 + 1
       z: Annotated[int,"_ < 10"]
-      z = 10
-      x = 2
+      z = 5
+      x = 10
       y = 15
       z = x
       
     """)
+    
+
     
 
 if __name__ == "__main__":

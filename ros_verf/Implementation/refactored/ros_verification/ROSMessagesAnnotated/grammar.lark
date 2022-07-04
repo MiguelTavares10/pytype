@@ -1,0 +1,67 @@
+start : expr_log                                                                                                -> start
+
+expr_log : expr_if (AND | OR) expr_log                                                                          -> expr_log
+         | expr_if                                                                                              -> expr
+
+expr_if : "if" expr_fun "then" expr_log "else" expr_fun                                                         -> expr_if
+        | expr_fun                                                                                              -> expr
+
+
+expr_fun : FUN "("expr_bool ("," expr_bool)* ")"  (LT | LTE | GT | GTE | EQUAL | DIFF ) expr_bool               -> expr_fun
+         | expr_bool                                                                                            -> expr
+
+expr_bool : expr_arit1 (LT | LTE | GT | GTE | EQUAL | DIFF ) expr_bool                                          -> expr_bool
+          | expr_arit1                                                                                          -> expr
+         
+expr_arit1 :expr_arit2 (MULT | QUOT) expr_arit1                                                                 -> expr_arit
+          | expr_arit2                                                                                          -> expr
+
+expr_arit2 : expr_final (PLUS | MINUS ) expr_arit2                                                              -> expr_arit
+          | expr_final                                                                                          -> expr
+
+
+expr_final :( BOOL_LIT | INT_LIT | FLOAT_LIT | STRING_LIT)                                                      -> expr_literal
+           | VAR ("." VAR)*                                                                                     -> expr_var
+           | "(" expr_log ")"                                                                                   -> expr_bracket
+           | (NOT | MINUS) expr_log                                                                             -> expr_unop
+
+//opLog : AND | OR
+
+//literals : BOOL_LIT | INT_LIT | FLOAT_LIT | STRING_LIT
+
+//opArit : PLUS | MINUS | MULT | QOUT
+
+//opBool : LT | LTE | GT | GTE | EQUAL | DIFF 
+
+//unop : NOT | MINUS
+
+AND : "and"
+OR : "or"
+PLUS: "+"
+MINUS: "-"
+MULT: "*"
+QUOT: "/"
+
+
+LT: "<"
+LTE: "<="
+GT: ">"
+GTE: ">="
+EQUAL: "=="
+DIFF: "!="
+NOT: "!"
+
+VAR: ("a".."z" /[a-zA-Z0-9_]/*) | "_"
+FUN: "A".."Z" /[a-zA-Z0-9_]/*
+
+BOOL_LIT: "true" | "false"
+INT_LIT: INT
+FLOAT_LIT: FLOAT
+STRING_LIT: ESCAPED_STRING
+
+%import common.ESCAPED_STRING
+%import common.WS
+%import common.INT
+%import common.FLOAT
+
+%ignore WS

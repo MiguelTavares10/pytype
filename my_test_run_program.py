@@ -1,4 +1,3 @@
-
 import textwrap
 
 from pytype import blocks
@@ -43,23 +42,15 @@ class AnnotationsTest(VmTestBase):
 
   def my_test(self):
     expected = """
-from typing import Annotated
-
-d = 7
-class A:
-
-    x: Annotated[int,'x>0'] = 3
-    y: Annotated[int,'y<0']
-    z = 10
-    
-    def __init__(self):
-        a = 1
-        b = 2
-        c : Annotated[int,'c<10']
-        c = "hello"
-
-    def func_example(self):
-        m = 5
+from typing_extensions import Annotated
+x: Annotated[int, "_ > 0"]
+y: Annotated[int, "_ > 0"]
+x = 1
+z: Annotated[int,"_ < 10"]
+z = 10
+x = 2
+y = 15
+z = x 
 """
     node, glb_members = self.ctx.vm.run_program(expected, "", maximum_depth=10)
     actual = [(op.name, op.line, symbol)

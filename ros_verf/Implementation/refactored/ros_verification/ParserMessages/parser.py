@@ -48,7 +48,7 @@ class TreeToROS(Transformer):
 # Creation of the parser
 def mk_parser(rule="start"):
     return Lark.open(
-        "./../ros_verification/ROSMessagesAnnotated/grammar.lark",
+        "./ros_verf/Implementation/refactored/ros_verification/ParserMessages/grammar.lark",
         parser='lalr',
         #lexer='standard',
         start=rule,
@@ -56,13 +56,14 @@ def mk_parser(rule="start"):
 
 def parse_comments(file):
         
-        folder = "./../ros_verification/ROSMessagesAnnotated"
+        folder = "./ros_verf/Implementation/refactored/ros_verification/ROSMessages"
         result = []
         caminho = f"{folder}/{file}.msg"
         #caminho = file +".msg"
         print(caminho)
         if os.path.isfile(caminho) :
-                print("é ficheiro")
+                print(f"{caminho} é ficheiro")
+                input()
                 readFile = open(caminho, "r")
 
                 lines = readFile.readlines()

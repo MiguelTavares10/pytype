@@ -1,6 +1,4 @@
 
-
-from operator import contains
 from typing import Union
 from z3 import *
 from ros_verf.Implementation.refactored.ros_verification.dsl import VFunction,  StrLit, Code , Line
@@ -9,6 +7,7 @@ from ros_verf.Implementation.refactored.ros_verification.condition_utils import 
 from ros_verf.Implementation.refactored.ros_verification.context_func import FuncContext
 from ros_verf.Implementation.refactored.ros_verification.prelude import TVar, var_unit, var_value
 from ros_verf.Implementation.refactored.ros_verification.run_prelude import run_prelude
+from ros_verf.Implementation.refactored.ros_verification.AnnotatedHandler import AnnotatedHandler
 
 COMMAND_LINE_BRACKETS = "###################################################################################"
 KEY_NEW_VAR = "_"
@@ -170,6 +169,13 @@ def verify_lines(line: Line, context: dict, funcContext , solver=None):
 
     if func == "create_datatype":
         dfun = funcContext[inputs[0]].get_func() 
+        vars = funcContext[inputs[0]].get_datatypes_fields(funcContext)
+        annotHandler = AnnotatedHandler.getInstance()
+        for var in vars:
+                annotatedVar = outputs[0]+"."+var[0]
+                annotHandler.add_var_annotated(annotatedVar)
+                print(f"var = {annotatedVar}")
+        input()
         assert isinstance(dfun, VFunction)
     else:
         dfun = context[func]

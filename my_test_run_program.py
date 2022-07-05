@@ -43,14 +43,15 @@ class AnnotationsTest(VmTestBase):
   def my_test(self):
     expected = """
 from typing_extensions import Annotated
-x: Annotated[int, "_ > 0"]
-y: Annotated[int, "_ > 0"]
-x = 1
-z: Annotated[int,"_ < 10"]
-z = 10
-x = 2
+import rospy
+from sensor_msgs.msg import LaserScan
+from geometry_msgs.msg import Twist
+move = Twist()
+y: Annotated[int,"#Unit(m/s)"]
 y = 15
-z = x 
+move.linear.y = y
+
+move.angular.y = y
 """
     node, glb_members = self.ctx.vm.run_program(expected, "", maximum_depth=10)
     actual = [(op.name, op.line, symbol)

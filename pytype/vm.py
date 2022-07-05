@@ -42,9 +42,11 @@ from pytype.pytd import slots
 from pytype.pytd import visitors
 from pytype.typegraph import cfg
 from pytype.typegraph import cfg_utils
+from ros_verf.Implementation.refactored.ros_verification.context_func import transform_name
 from ros_verf.Implementation.refactored.ros_verification.verificationHandler import VerificationHandler
+from ros_verf.Implementation.refactored.ros_verification.AnnotatedHandler import AnnotatedHandler
 from ros_verf.Implementation.refactored.ros_verification.dsl import StrLit
-
+import os
 log = logging.getLogger(__name__)
 
 
@@ -1256,13 +1258,19 @@ class VirtualMachine:
         details = "Note: " + details.to_error_message()
       self.ctx.errorlog.name_error(self.frames, name, details=details)
       return self.ctx.convert.unsolvable
-
+  
+  messageAnnot= ""
 
   last_cond_const= ("None","None")
   def byte_LOAD_NAME(self, state, op):
     """Load a name. Can be a local, global, or builtin."""
     name = self.frame.f_code.co_names[op.arg]
-    self.last_cond_const = (name,"Var")
+    annotHandler = AnnotatedHandler.getInstance()
+    if annotHandler.message_is_annotated(name):
+      self.messageAnnot = name
+    else:
+      self.last_cond_const = (name,"Var")
+    
     try:
       state, val = self.load_local(state, name)
     except KeyError:
@@ -1286,11 +1294,18 @@ class VirtualMachine:
     self.trace_opcode(op, name, val)
     return state.push(val)
 
+
   def byte_STORE_NAME(self, state, op):
     name = self.frame.f_code.co_names[op.arg]
     veriHandler = VerificationHandler.getInstance()
+    annotHandler = AnnotatedHandler.getInstance()
     value, typeVal = self.last_cond_const
-    if veriHandler.var_is_annotated(name):
+    print(f"name = {name} and value = {value}")
+    input()
+
+
+
+    if annotHandler.var_is_annotated(name):
       print(f"{name} = {self.last_cond_const}")
       #TODO: check if the name is already annotated and send it info to verification
       if typeVal == "Const":
@@ -1301,8 +1316,16 @@ class VirtualMachine:
         cond = ([name],"assign",[name,value])
         print(f"cond = {cond}")
         veriHandler.run_verification(cond)
-
-
+    
+    folder = "./ros_verf/Implementation/refactored/ros_verification/ROSMessages"
+    caminho = f"{folder}/{value}.msg"
+    print(caminho)
+    if os.path.isfile(caminho) :
+      print("é ficheiro")
+      line = ([name],"create_datatype",[value])
+      annotHandler.add_message_annotated(name)
+      veriHandler.run_verification(line)
+      print(line)
       input()
     return self._pop_and_store(state, op, name, local=True)
 
@@ -1634,6 +1657,8 @@ class VirtualMachine:
   def byte_LOAD_ATTR(self, state, op):
     """Pop an object, and retrieve a named attribute from it."""
     name = self.frame.f_code.co_names[op.arg]
+    
+    self.messageAnnot += "." + transform_name(name)
     state, obj = state.pop()
     log.debug("LOAD_ATTR: %r %r", obj, name)
     with self._suppress_opcode_tracing():
@@ -1703,6 +1728,24 @@ class VirtualMachine:
   def byte_STORE_ATTR(self, state, op):
     """Store an attribute."""
     name = self.frame.f_code.co_names[op.arg]
+    annotHandler = AnnotatedHandler.getInstance()
+    veriHandler = VerificationHandler.getInstance()
+    self.messageAnnot += "." + transform_name(name)
+    name = self.messageAnnot
+    self.messageAnnot = ""
+    print(f" Message var = {self.messageAnnot}")
+    if annotHandler.var_is_annotated(name):
+      print(f"{name} = {self.last_cond_const}")
+      value, typeVal = self.last_cond_const
+      if typeVal == "Const":
+        cond = ([name],"add_value",[name,value])
+        print(f"cond = {cond}")
+        veriHandler.run_verification(cond)
+      elif typeVal == "Var":
+        cond = ([name],"assign",[name,value])
+        print(f"cond = {cond}")
+        veriHandler.run_verification(cond)
+    input()
     state, (val, obj) = state.popn(2)
     node, annotations_dict, check_attribute_types = (
         self._get_type_of_attr_to_store(state.node, op, obj, name))
@@ -1742,11 +1785,42 @@ class VirtualMachine:
       typ.add_var_name(name)
       print(f"var = {name} refinement = {typ.refinement}")
       veriHandler = VerificationHandler.getInstance()
-      veriHandler.add_var_annotated(name)
+      annotHandler = AnnotatedHandler.getInstance()
+      annotHandler.add_var_annotated(name)
       #TODO: guardar variavel anotada e mandar para  verificação
-      if  "#Unit" in typ.refinement:
-        #TODO
-        pass
+      ref = typ.refinement
+      
+      if  "#Unit" in ref:
+        if "&&" in ref:
+          splitRef = ref.split("&&")
+          for sRef in splitRef:
+            if "#Unit" in sRef:
+              newRef = sRef.replace("#Unit","")
+              newRef = newRef.replace("(","")
+              newRef = newRef.replace(")","")
+              newRef = newRef.replace(" ","")
+              line = ([name],"create_unit",[StrLit(newRef)])
+              print(f"line = {line}")
+              input()
+              veriHandler.run_verification(line)
+          for sRef in splitRef:
+            if not "#Unit" in sRef:
+              cond = sRef.replace("_","var_value( "+name+" )")
+              lineCond = ([name],"condition",[cond])
+              print(f"lineCond = {lineCond}")
+              veriHandler.run_verification(lineCond)
+
+
+        else:
+          newRef = ref.replace("#Unit","")
+          newRef = newRef.replace("(","")
+          newRef = newRef.replace(")","")
+          newRef = newRef.replace(" ","")
+          line = ([name],"create_unit",[StrLit(newRef)])
+          print(f"line = {line}")
+          input()
+          veriHandler.run_verification(line)
+
       else:
         line = ([name],"create_unit",[StrLit("None")])
         print(f"line = {line}")

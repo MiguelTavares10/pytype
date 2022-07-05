@@ -3,7 +3,7 @@ from z3 import *
 from ros_verf.Implementation.refactored.ros_verification.prelude import TVar
 from ros_verf.Implementation.refactored.ros_verification.dsl import VFunction 
 from ros_verf.Implementation.refactored.ros_verification.prelude import var_unit, var_value, TVar
-from ros_verf.Implementation.refactored.ros_verification.ROSMessagesAnnotated.ast_syntax import LogicalExpression, IfExpression, Condition, Literal, Variable,FunctionExpression, AritmeticExpression
+from ros_verf.Implementation.refactored.ros_verification.ParserMessages.ast_syntax import LogicalExpression, IfExpression, Condition, Literal, Variable,FunctionExpression, AritmeticExpression
 
 COMMAND_LINE_BRACKETS = "###################################################################################"
 base_types = ["float64","uint32","string"]
@@ -63,7 +63,9 @@ class FuncContext:
                         self.fields.append(FieldFunc(varName,varType))
                         newVarType = build_var_type(varName,varType,context)
                         newVars.append((varName, newVarType))
-
+                
+                print(f"self.fields = {self.fields}")
+                input()
                 self.dataType = z3.Datatype(transform_name(name))
                 self.name = transform_name(name)
                 self.dataType.declare(name,*newVars)       

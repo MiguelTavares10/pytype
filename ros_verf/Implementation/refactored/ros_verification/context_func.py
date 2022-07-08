@@ -65,7 +65,7 @@ class FuncContext:
                         newVars.append((varName, newVarType))
                 
                 print(f"self.fields = {self.fields}")
-                input()
+
                 self.dataType = z3.Datatype(transform_name(name))
                 self.name = transform_name(name)
                 self.dataType.declare(name,*newVars)       

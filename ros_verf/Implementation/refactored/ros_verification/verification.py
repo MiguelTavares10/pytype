@@ -59,6 +59,58 @@ def build_initial_context():
         pre_condition = [lambda ins: eval(ins[0])],
         post_condition = [lambda ins, outs: True],
     )
+
+    context["plus_vars"] = VFunction(
+        outputs = [TVar],
+        inputs = [TVar,TVar,TVar],
+        pre_condition = [lambda ins: z3.And(var_unit(ins[0]) == var_unit(ins[1]),
+                                            var_unit(ins[0]) == var_unit(ins[2]))],
+        post_condition = [lambda ins, outs: z3.And(var_unit(outs[0]) == var_unit(ins[0]),
+                                                    var_unit(outs[0]) == var_unit(ins[1]),
+                                                    var_unit(outs[0]) == var_unit(ins[2]),
+                                                    var_value(outs[0]) == (var_value(ins[1]) + var_value(ins[2])))],
+    )
+
+
+    context["plus_cons"] = VFunction(
+    outputs = [TVar],
+    inputs = [TVar,TVar,z3.Reals],
+    pre_condition = [lambda ins: var_unit(ins[0]) == var_unit(ins[1])],
+    post_condition = [lambda ins, outs: z3.And(var_unit(outs[0]) == var_unit(ins[0]),
+                                                var_unit(outs[0]) == var_unit(ins[1]),
+                                                var_value(outs[0]) == (var_value(ins[1]) + ins[2]))],
+    )
+
+
+    context["minus_vars"] = VFunction(
+        outputs = [TVar],
+        inputs = [TVar,TVar,TVar],
+        pre_condition = [lambda ins: z3.And(var_unit(ins[0]) == var_unit(ins[1]),
+                                            var_unit(ins[0]) == var_unit(ins[2]))],
+        post_condition = [lambda ins, outs: z3.And(var_unit(outs[0]) == var_unit(ins[0]),
+                                                    var_unit(outs[0]) == var_unit(ins[1]),
+                                                    var_unit(outs[0]) == var_unit(ins[2]),
+                                                    var_value(outs[0]) == (var_value(ins[1]) - var_value(ins[2])))],
+    )
+
+
+    context["minus_var_cons"] = VFunction(
+    outputs = [TVar],
+    inputs = [TVar,TVar,z3.Reals],
+    pre_condition = [lambda ins: var_unit(ins[0]) == var_unit(ins[1])],
+    post_condition = [lambda ins, outs: z3.And(var_unit(outs[0]) == var_unit(ins[0]),
+                                                var_unit(outs[0]) == var_unit(ins[1]),
+                                                var_value(outs[0]) == (var_value(ins[1]) - ins[2]))],
+    )
+
+    context["minus_cons_var"] = VFunction(
+    outputs = [TVar],
+    inputs = [TVar,z3.Reals, TVar],
+    pre_condition = [lambda ins: var_unit(ins[0]) == var_unit(ins[2])],
+    post_condition = [lambda ins, outs: z3.And(var_unit(outs[0]) == var_unit(ins[0]),
+                                                var_unit(outs[0]) == var_unit(ins[2]),
+                                                var_value(outs[0]) == (ins[1] - var_value(ins[2])))],
+    )
     return context
 
 def build_z3_object(o,func,datatype,funcContext):
@@ -175,7 +227,7 @@ def verify_lines(line: Line, context: dict, funcContext , solver=None):
                 annotatedVar = outputs[0]+"."+var[0]
                 annotHandler.add_var_annotated(annotatedVar)
                 print(f"var = {annotatedVar}")
-        input()
+
         assert isinstance(dfun, VFunction)
     else:
         dfun = context[func]
@@ -210,7 +262,7 @@ def verify_lines(line: Line, context: dict, funcContext , solver=None):
 
     symbolic_outputs = [build_z3_object(i,func,datatypeOut,funcContext) for i in newOutputs]
 
-    if func == "add_value" or func == "add_unit" or func == "assign":
+    if func == "add_value" or func == "add_unit" or func == "assign" or func == "plus_vars" or func == "plus_cons" or func == "minus_vars" or func == "minus_var_cons" or func == "minus_cons_var":
         outputsDatatype = outputs[0]
         if outputsDatatype.__contains__("."):
             outputsSplit = outputsDatatype.split(".")
@@ -276,7 +328,7 @@ def verify_lines(line: Line, context: dict, funcContext , solver=None):
             print(f"cond {condFun} added to {outputs[0]} conds")
             context[outputs[0]].add_global_data(condFun)        
     print(COMMAND_LINE_BRACKETS)
-    if func == "assign" or func == "add_value":
+    if func == "assign" or func == "add_value" or func == "plus_vars" or func == "plus_cons" or func == "minus_vars" or func == "minus_cons_var" or func == "minus_var_cons":
         solver.push()
         if inputs[0] in context:
             gblCtx : GlobalContext = context[inputs[0]]

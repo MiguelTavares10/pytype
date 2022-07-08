@@ -60,10 +60,9 @@ def parse_comments(file):
         result = []
         caminho = f"{folder}/{file}.msg"
         #caminho = file +".msg"
-        print(caminho)
         if os.path.isfile(caminho) :
                 print(f"{caminho} é ficheiro")
-                input()
+
                 readFile = open(caminho, "r")
 
                 lines = readFile.readlines()

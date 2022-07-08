@@ -472,8 +472,11 @@ class VirtualMachine:
       return self._var_names.get(s.variable.id)
     return None
 
+  bin_operator = "None"
   def binary_operator(self, state, name, report_errors=True):
     state, (x, y) = state.popn(2)
+    self.bin_operator = name
+    print(f"binary_operator = {self.bin_operator}")
     with self._suppress_opcode_tracing():  # don't trace the magic method call
       state, ret = vm_utils.call_binary_operator(
           state, name, x, y, report_errors=report_errors, ctx=self.ctx)
@@ -1124,6 +1127,7 @@ class VirtualMachine:
   def byte_BINARY_MATRIX_MULTIPLY(self, state, op):
     return self.binary_operator(state, "__matmul__")
 
+
   def byte_BINARY_ADD(self, state, op):
     return self.binary_operator(state, "__add__")
 
@@ -1205,7 +1209,7 @@ class VirtualMachine:
   def byte_LOAD_CONST(self, state, op):
     try:
       raw_const = self.frame.f_code.co_consts[op.arg]
-      self.last_cond_const = (raw_const,"Const")
+      self.last_cond_const.append((raw_const,"Const"))
     except IndexError:
       # We have tried to access an undefined closure variable.
       # There is an associated LOAD_DEREF failure where the error will be
@@ -1261,7 +1265,7 @@ class VirtualMachine:
   
   messageAnnot= ""
 
-  last_cond_const= ("None","None")
+  last_cond_const= []
   def byte_LOAD_NAME(self, state, op):
     """Load a name. Can be a local, global, or builtin."""
     name = self.frame.f_code.co_names[op.arg]
@@ -1269,7 +1273,7 @@ class VirtualMachine:
     if annotHandler.message_is_annotated(name):
       self.messageAnnot = name
     else:
-      self.last_cond_const = (name,"Var")
+      self.last_cond_const.append((name,"Var"))
     
     try:
       state, val = self.load_local(state, name)
@@ -1299,14 +1303,46 @@ class VirtualMachine:
     name = self.frame.f_code.co_names[op.arg]
     veriHandler = VerificationHandler.getInstance()
     annotHandler = AnnotatedHandler.getInstance()
-    value, typeVal = self.last_cond_const
+    value, typeVal = self.last_cond_const[-1]
     print(f"name = {name} and value = {value}")
-    input()
+
+    if self.bin_operator == "__add__":
+      self.bin_operator = ""
+      otherValue, otherTypeVal = self.last_cond_const[-2]
+      if typeVal == "Var":
+        if otherTypeVal == "Var":
+          line =  [[name], "plus_vars",[name,value,otherValue]]
+          print(f"line = {line}")
+          veriHandler.run_verification(line)
+        else:
+          line =  [[name], "plus_cons",[name,value,otherValue]]
+          print(f"line = {line}")
+          veriHandler.run_verification(line)
+      else:
+        line =  [[name], "plus_cons",[name,otherValue,value]]
+        print(f"line = {line}")
+        veriHandler.run_verification(line)
+
+    if self.bin_operator == "__sub__":
+      self.bin_operator = ""
+      otherValue, otherTypeVal = self.last_cond_const[-2]
+      if typeVal == "Var":
+        if otherTypeVal == "Var":
+          line =  [[name], "minus_vars",[name,otherValue,value]]
+          print(f"line = {line}")
+          veriHandler.run_verification(line)
+        else:
+          line =  [[name], "minus_cons_var",[name,otherValue,value]]
+          print(f"line = {line}")
+          veriHandler.run_verification(line)
+      else:
+        line =  [[name], "minus_var_cons",[name,otherValue,value]]
+        print(f"line = {line}")
+        veriHandler.run_verification(line)
 
 
-
-    if annotHandler.var_is_annotated(name):
-      print(f"{name} = {self.last_cond_const}")
+    elif annotHandler.var_is_annotated(name):
+      print(f"{name} = {self.last_cond_const[-1]}")
       #TODO: check if the name is already annotated and send it info to verification
       if typeVal == "Const":
         cond = ([name],"add_value",[name,value])
@@ -1326,7 +1362,7 @@ class VirtualMachine:
       annotHandler.add_message_annotated(name)
       veriHandler.run_verification(line)
       print(line)
-      input()
+
     return self._pop_and_store(state, op, name, local=True)
 
   def byte_DELETE_NAME(self, state, op):
@@ -1735,8 +1771,8 @@ class VirtualMachine:
     self.messageAnnot = ""
     print(f" Message var = {self.messageAnnot}")
     if annotHandler.var_is_annotated(name):
-      print(f"{name} = {self.last_cond_const}")
-      value, typeVal = self.last_cond_const
+      print(f"{name} = {self.last_cond_const[-1]}")
+      value, typeVal = self.last_cond_const[-1]
       if typeVal == "Const":
         cond = ([name],"add_value",[name,value])
         print(f"cond = {cond}")
@@ -1745,7 +1781,7 @@ class VirtualMachine:
         cond = ([name],"assign",[name,value])
         print(f"cond = {cond}")
         veriHandler.run_verification(cond)
-    input()
+
     state, (val, obj) = state.popn(2)
     node, annotations_dict, check_attribute_types = (
         self._get_type_of_attr_to_store(state.node, op, obj, name))
@@ -1801,7 +1837,7 @@ class VirtualMachine:
               newRef = newRef.replace(" ","")
               line = ([name],"create_unit",[StrLit(newRef)])
               print(f"line = {line}")
-              input()
+
               veriHandler.run_verification(line)
           for sRef in splitRef:
             if not "#Unit" in sRef:
@@ -1818,7 +1854,7 @@ class VirtualMachine:
           newRef = newRef.replace(" ","")
           line = ([name],"create_unit",[StrLit(newRef)])
           print(f"line = {line}")
-          input()
+
           veriHandler.run_verification(line)
 
       else:
@@ -1831,7 +1867,7 @@ class VirtualMachine:
         print(f"lineCond = {lineCond}")
 
         veriHandler.run_verification(lineCond)
-      input()
+
       self._record_annotation(state.node, op, name, typ)
 
 

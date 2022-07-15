@@ -8,7 +8,7 @@ from pytype.pyc import opcodes
 from pytype.pyc import pyc
 from pytype.tests import test_base
 from pytype.tests import test_utils
-
+import os
 
 # The tests in this file check disassembled bytecode, which varies from version
 # to version, so we fix the test version.
@@ -41,15 +41,32 @@ class AnnotationsTest(VmTestBase):
         })
 
   def my_test(self):
+
+    folder = "./"
+    file = "simple_pub_sub.py"
+    result = []
+    caminho = f"{folder}/{file}"
+    #caminho = file +".msg"
+    if os.path.isfile(caminho) :
+            print(f"{caminho} é ficheiro")
+
+            readFile = open(caminho, "r")
+
+            lines = readFile.readlines()
+            code = ""
+            for line in lines:
+              code +=line
+
+                
     expected = """
 from typing_extensions import Annotated
 
-x: Annotated[int,"#Unit(m/s) && _ > 2"]
-y: Annotated[int,"#Unit(m/s)"]
-z: Annotated[int,"#Unit(m/s)"]
+x: Annotated[int, "_ < 10 or _ > 15"]
+y: Annotated[int,""]
+z: Annotated[int,""]
 y = 5
 z = 2
-x = y - 2
+x = 8 
 """
 
     expected2 = """
@@ -58,7 +75,7 @@ import rospy
 from geometry_msgs.msg import Twist
 
 move = Twist() 
-x : Annotated[int,"#Unit(rad/s)"] 
+x : Annotated[int,"Unit('rad/s')"] 
 x = 2
 move.linear.y = 15
 move.angular.x = x
@@ -66,11 +83,11 @@ move.angular.x = x
 
 
 """
-    node, glb_members = self.ctx.vm.run_program(expected, "", maximum_depth=10)
+    node, glb_members = self.ctx.vm.run_program(code, "", maximum_depth=10)
     actual = [(op.name, op.line, symbol)
               for op, symbol, _ in self.ctx.vm.opcode_traces]
-    #for act in actual:
-      #print(act)
+    for act in actual:
+      print(act)
 
 
 if __name__ == "__main__":

@@ -14,9 +14,12 @@ import collections
 import contextlib
 import functools
 import itertools
+from lib2to3.refactor import RefactoringTool
 import logging
 import re
 from typing import Any, Dict, List, Optional, Sequence, Tuple
+
+from attr import s
 
 from pytype import blocks
 from pytype import compare
@@ -389,6 +392,49 @@ class VirtualMachine:
     node, return_var = self.run_frame(frame, node)
     return node, frame.f_globals, frame.f_locals, return_var
 
+
+  def change_src(self,src):
+    splitCode = src.split("\n")
+    name = "##None##"
+    for line in splitCode:
+      if "rospy.Subscriber(" in line:
+        splitLine = line.split(",")
+        splitLine2 = splitLine[2].split(")")
+        name= splitLine2[0].replace(" ","")
+        print(f"name = {name}")
+
+    methodCall = "def " + name
+    methodLine = False
+    lineCounter = 0
+    codeMethod= []
+    methodCode = ""
+    for line in splitCode:
+      lineCounter += 1
+      if methodCall in line:
+        methodLine = True
+        lineSpaces = ""
+        findSpaces = True
+        for character in splitCode[lineCounter+1]:
+          if character == ' ' and findSpaces:
+            lineSpaces += character
+          else:
+            findSpaces = False
+      elif methodLine:
+        if line.startswith(lineSpaces):
+          lenSpaces = len(lineSpaces) 
+          stringLine = line[lenSpaces :]
+          codeMethod.append(stringLine)
+        elif not line == "":
+          methodLine = False
+          for codeLine in codeMethod:
+            methodCode += codeLine + '\n'
+          #self.run_program(methodCode,"", maximum_depth=10)
+    src += methodCode
+    
+
+    print(f"newsrc = {src}")
+    return src
+
   def run_program(self, src, filename, maximum_depth):
     """Run the code and return the CFG nodes.
 
@@ -400,6 +446,12 @@ class VirtualMachine:
       A tuple (CFGNode, set) containing the last CFGNode of the program as
         well as all the top-level names defined by it.
     """
+    #if "rospy.Subscriber(" in src:
+    #  src = self.change_src(src)
+
+    veriHandler = VerificationHandler.getInstance()
+    veriHandler.add_code(src)
+
     self.filename = filename
     self._maximum_depth = maximum_depth
     if (self.ctx.python_version >= (3, 8) and
@@ -1270,6 +1322,7 @@ class VirtualMachine:
     """Load a name. Can be a local, global, or builtin."""
     name = self.frame.f_code.co_names[op.arg]
     annotHandler = AnnotatedHandler.getInstance()
+
     if annotHandler.message_is_annotated(name):
       self.messageAnnot = name
     else:
@@ -1817,56 +1870,113 @@ class VirtualMachine:
           name,
           self.simple_stack(),
           allowed_type_params=self.frame.type_params)
+      if isinstance(typ,abstract.PyTDClassRefined):
+        typ.add_var_name(name)
+        print(f"var = {name} refinement = {typ.refinement}")
+        veriHandler = VerificationHandler.getInstance()
+        annotHandler = AnnotatedHandler.getInstance()
+        annotHandler.add_var_annotated(name)
+        #TODO: guardar variavel anotada e mandar para  verificação
+        ref = typ.refinement
+        
+        if  "Unit" in ref:
+          if " and " in ref:
+            splitRef = ref.split(" and ")
+            for sRef in splitRef:
+              if " or " in sRef:
+                splitOr = sRef.split(" or ")
+                print(f"sRef = {splitOr}")
+                conds = []
+                for orRef in splitOr:
+                  if not "Unit" in orRef:
+                    orString = orRef.replace("_","var_value( "+name+" )")
+                    conds.append(orString)
+                    print(f"appended {orString} ")
+                print(f"conds = {conds}")
+                if len(conds) > 1:
+                  lineOr = "z3.Or(" + conds[0]
+                  for c in conds[1:]:
+                    lineOr += "," + c
 
-      typ.add_var_name(name)
-      print(f"var = {name} refinement = {typ.refinement}")
-      veriHandler = VerificationHandler.getInstance()
-      annotHandler = AnnotatedHandler.getInstance()
-      annotHandler.add_var_annotated(name)
-      #TODO: guardar variavel anotada e mandar para  verificação
-      ref = typ.refinement
-      
-      if  "#Unit" in ref:
-        if "&&" in ref:
-          splitRef = ref.split("&&")
-          for sRef in splitRef:
-            if "#Unit" in sRef:
-              newRef = sRef.replace("#Unit","")
-              newRef = newRef.replace("(","")
-              newRef = newRef.replace(")","")
-              newRef = newRef.replace(" ","")
-              line = ([name],"create_unit",[StrLit(newRef)])
-              print(f"line = {line}")
+                  lineOr += ")"
+                  lineCond = ([name],"condition",[lineOr])
+                  print(f"line = {lineCond}")
+                  veriHandler.run_verification(lineCond)
 
-              veriHandler.run_verification(line)
-          for sRef in splitRef:
-            if not "#Unit" in sRef:
-              cond = sRef.replace("_","var_value( "+name+" )")
-              lineCond = ([name],"condition",[cond])
-              print(f"lineCond = {lineCond}")
-              veriHandler.run_verification(lineCond)
+                
+              elif "Unit" in sRef:
+                newRef = sRef.replace("Unit","")
+                newRef = newRef.replace("(","")
+                newRef = newRef.replace(")","")
+                newRef = newRef.replace(" ","")
+                newRef = newRef.replace("'","")
+                line = ([name],"create_unit",[StrLit(newRef)])
+                print(f"line = {line}")
 
+                veriHandler.run_verification(line)
+            for sRef in splitRef:
+              if not "Unit" in sRef and not " or " in sRef:
+                cond = sRef.replace("_","var_value( "+name+" )")
+                lineCond = ([name],"condition",[cond])
+                print(f"lineCond = {lineCond}")
+                veriHandler.run_verification(lineCond)
+
+
+          else:
+            newRef = ref.replace("Unit","")
+            newRef = newRef.replace("(","")
+            newRef = newRef.replace(")","")
+            newRef = newRef.replace(" ","")
+            newRef = newRef.replace("'","")
+            line = ([name],"create_unit",[StrLit(newRef)])
+            print(f"line = {line}")
+
+            veriHandler.run_verification(line)
 
         else:
-          newRef = ref.replace("#Unit","")
-          newRef = newRef.replace("(","")
-          newRef = newRef.replace(")","")
-          newRef = newRef.replace(" ","")
-          line = ([name],"create_unit",[StrLit(newRef)])
+          line = ([name],"create_unit",[StrLit("None")])
           print(f"line = {line}")
-
           veriHandler.run_verification(line)
+          ref = typ.refinement.replace("_","var_value( "+name+" )")
+          if " and " in ref:
+            splitRef = ref.split(" and ")
+            for sRef in splitRef:
+              if " or " in sRef:
+                splitOr = sRef.split(" or ")
+                conds = []
+                for orRef in splitOr:
+                  if not "Unit" in orRef:
+                    conds.append(orRef)
+                
+                if len(conds) > 1:
+                  lineOr = "z3.Or(" + conds[0]
+                  for c in conds[1:]:
+                    lineOr += "," + c
 
-      else:
-        line = ([name],"create_unit",[StrLit("None")])
-        print(f"line = {line}")
+                  lineOr += ")"
+                  lineCond = ([name],"condition",[lineOr])
+                  print(f"line = {lineCond}")
+                  veriHandler.run_verification(lineCond)
+              else:
+                  lineCond = ([name],"condition",[sRef])
+                  print(f"line = {lineCond}")
+                  veriHandler.run_verification(lineCond)
+          else:
+            splitOr = ref.split(" or ")
+            conds = []
+            for orRef in splitOr:
+              if not "Unit" in orRef:
+                conds.append(orRef)
+            
+            if len(conds) > 1:
+              lineOr = "z3.Or(" + conds[0]
+              for c in conds[1:]:
+                lineOr += "," + c
 
-        veriHandler.run_verification(line)
-        cond = typ.refinement.replace("_","var_value( "+name+" )")
-        lineCond = ([name],"condition",[cond])
-        print(f"lineCond = {lineCond}")
-
-        veriHandler.run_verification(lineCond)
+              lineOr += ")"
+              lineCond = ([name],"condition",[lineOr])
+              print(f"line = {lineCond}")
+              veriHandler.run_verification(lineCond)
 
       self._record_annotation(state.node, op, name, typ)
 
@@ -2415,10 +2525,16 @@ class VirtualMachine:
         state.node, annot.items())
     return state, pos_defaults, kw_defaults, annot, free_vars
 
+
+  functions_made = []
   def byte_MAKE_FUNCTION(self, state, op):
     """Create a function and push it onto the stack."""
     state, name_var = state.pop()
+
     name = abstract_utils.get_atomic_python_constant(name_var)
+
+    self.functions_made.append(name)
+
     state, code = state.pop()
     state, defaults, kw_defaults, annot, free_vars = (
         self._get_extra_function_args(state, op.arg))

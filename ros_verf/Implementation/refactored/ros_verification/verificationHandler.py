@@ -18,6 +18,14 @@ class VerificationHandler:
         self.solver = z3.Solver()
         self.funcContext = run_prelude()
         VerificationHandler.__instance = self
+        self.code = ""
 
     def run_verification(self, line):
         verif.verify_lines(line, self.context, self.funcContext, solver=self.solver)
+
+
+    def add_code(self, code):
+      self.code = code
+
+    def get_code(self):
+      return self.code

@@ -139,6 +139,7 @@ class OpcodeWithArg(Opcode):
   def __init__(self, index, line, arg, pretty_arg):
     super().__init__(index, line)
     self.arg = arg
+    print(f" OpcodeWitharg -> index = {self.index} , line = {line} , arg = {arg}, and pretty_arg = {pretty_arg}")
     self.pretty_arg = pretty_arg
 
   def __str__(self):

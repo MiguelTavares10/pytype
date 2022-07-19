@@ -20,7 +20,6 @@ import re
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from attr import s
-
 from pytype import blocks
 from pytype import compare
 from pytype import constant_folding
@@ -150,6 +149,7 @@ class VirtualMachine:
       self._late_annotations_stack = old_late_annotations_stack
 
   def trace_opcode(self, op, symbol, val):
+    print(f" op = {op}, symbol = {symbol} , val = {val}")
     """Record trace data for other tools to use."""
     if not self._trace_opcodes:
       return
@@ -173,6 +173,9 @@ class VirtualMachine:
     else:
       data = (get_data(val),)
     rec = (op, symbol, data)
+    if isinstance(op, opcodes.MAKE_FUNCTION):
+      self.functions_made.append(symbol)
+    
     self.opcode_traces.append(rec)
 
   def remaining_depth(self):
@@ -211,6 +214,7 @@ class VirtualMachine:
     self.frame.current_opcode = None
     return state
 
+  functions_made= []
   def run_frame(self, frame, node, annotated_locals=None):
     """Run a frame (typically belonging to a method)."""
     self.push_frame(frame)
@@ -236,6 +240,7 @@ class VirtualMachine:
       self.frame.current_block = block
       op = None
       for op in block:
+
         state = self.run_instruction(op, state)
         # Check if we have to carry forward the return state from an except
         # block to the END_FINALLY opcode.
@@ -245,6 +250,20 @@ class VirtualMachine:
         if state.why:
           # we can't process this block any further
           break
+        if isinstance(op,opcodes.OpcodeWithArg):
+          print(f"run op in block type op = {type(op)} , pretty_arg = {op.pretty_arg}")
+          if isinstance(op,opcodes.MAKE_FUNCTION):
+            self.functions_made.append(op.pretty_arg)
+          if isinstance(op, opcodes.LOAD_NAME):
+            if op.pretty_arg in self.functions_made:
+              new_op = opcodes.CALL_FUNCTION((op.index + 1),op.line, 7, op.pretty_arg)
+              #state=self.run_instruction(new_op,state)
+              new_why = finally_tracker.process(new_op, state, self.ctx)
+              if new_why:
+                state = state.set_why(new_why)
+              if state.why:
+              # we can't process this block any further
+                break
       assert op
       if state.why:
         # If we raise an exception or return in an except block do not
@@ -570,6 +589,7 @@ class VirtualMachine:
                                starargs=None, starstarargs=None,
                                fallback_to_unsolvable=True):
     """Call a function with the given state."""
+
     assert starargs is None or isinstance(starargs, cfg.Variable)
     assert starstarargs is None or isinstance(starstarargs, cfg.Variable)
     args = function.Args(
@@ -596,14 +616,14 @@ class VirtualMachine:
 
   def call_function_from_stack(self, state, num, starargs, starstarargs):
     """Pop arguments for a function and call it."""
-
+    print(f"state = {state}, num = {num}, starargs = {starargs}, starstarargs = {starstarargs}")
+    input()
     namedargs = {}
 
     def set_named_arg(node, key, val):
       # If we have no bindings for val, fall back to unsolvable.
       # See test_closures.ClosuresTest.test_undefined_var
       namedargs[key] = val if val.bindings else self.ctx.new_unsolvable(node)
-
     state, args = state.popn(num)
     if starstarargs:
       kwnames = abstract_utils.get_atomic_python_constant(starstarargs, tuple)
@@ -1349,6 +1369,7 @@ class VirtualMachine:
           return state.push(one_val.to_variable(state.node))
     vm_utils.check_for_deleted(state, name, val, self.ctx)
     self.trace_opcode(op, name, val)
+    print(f" trace opcode --> op = {op} , name = {name}, val = {val}")
     return state.push(val)
 
 
@@ -2526,14 +2547,12 @@ class VirtualMachine:
     return state, pos_defaults, kw_defaults, annot, free_vars
 
 
-  functions_made = []
   def byte_MAKE_FUNCTION(self, state, op):
     """Create a function and push it onto the stack."""
     state, name_var = state.pop()
 
     name = abstract_utils.get_atomic_python_constant(name_var)
 
-    self.functions_made.append(name)
 
     state, code = state.pop()
     state, defaults, kw_defaults, annot, free_vars = (

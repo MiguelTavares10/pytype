@@ -8,9 +8,8 @@ from geometry_msgs.msg import Twist
 def test():
     test = 1
 
-def callback():
+def callback(msg : LaserScan):
     move = Twist() 
-    msg : LaserScan = LaserScan()
 
     x : Annotated[float, "Unit('m/s')"]
     z : Annotated[float, "Unit('m/s') and _ < 100"]
@@ -37,14 +36,14 @@ def callback():
     pub.publish(move)
 
 
+test()
 rospy.init_node('pub_sub_node')
 
 sub = rospy.Subscriber('/kobuki/laser/scan', LaserScan , callback)
+
 
 pub = rospy.Publisher('/cmd_vel', Twist, queue_size=1) 
 
 
 rospy.spin()
 
-
-test()

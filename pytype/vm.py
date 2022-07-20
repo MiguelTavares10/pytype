@@ -256,8 +256,8 @@ class VirtualMachine:
             self.functions_made.append(op.pretty_arg)
           if isinstance(op, opcodes.LOAD_NAME):
             if op.pretty_arg in self.functions_made:
-              new_op = opcodes.CALL_FUNCTION((op.index + 1),op.line, 7, op.pretty_arg)
-              #state=self.run_instruction(new_op,state)
+              new_op = opcodes.CALL_FUNCTION((op.index + 1),op.line, 3, op.pretty_arg)
+              state=self.run_instruction(new_op,state)
               new_why = finally_tracker.process(new_op, state, self.ctx)
               if new_why:
                 state = state.set_why(new_why)
@@ -617,7 +617,6 @@ class VirtualMachine:
   def call_function_from_stack(self, state, num, starargs, starstarargs):
     """Pop arguments for a function and call it."""
     print(f"state = {state}, num = {num}, starargs = {starargs}, starstarargs = {starstarargs}")
-    input()
     namedargs = {}
 
     def set_named_arg(node, key, val):
@@ -625,6 +624,10 @@ class VirtualMachine:
       # See test_closures.ClosuresTest.test_undefined_var
       namedargs[key] = val if val.bindings else self.ctx.new_unsolvable(node)
     state, args = state.popn(num)
+    print(f"state = {state},  args = {args}")
+    for arg in args:
+      print(f"arg= {arg.data}")
+    input()
     if starstarargs:
       kwnames = abstract_utils.get_atomic_python_constant(starstarargs, tuple)
       n = len(args) - len(kwnames)
@@ -2989,6 +2992,7 @@ class VirtualMachine:
     return state
 
   def byte_CALL_METHOD(self, state, op):
+    print(op)
     state, args = state.popn(op.arg)
     state, func = state.pop()
     state, result = self.call_function_with_state(state, func, args)

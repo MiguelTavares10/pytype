@@ -36,7 +36,6 @@ def callback(msg : LaserScan):
     pub.publish(move)
 
 
-test()
 rospy.init_node('pub_sub_node')
 
 sub = rospy.Subscriber('/kobuki/laser/scan', LaserScan , callback)

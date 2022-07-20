@@ -94,6 +94,7 @@ class BuiltinLoader:
   def get_builtin(self, builtin_dir, module_name):
     """Load a stub that ships with pytype."""
     mod = self._parse_predefined(builtin_dir, module_name)
+    print(f"builtin_dir = {builtin_dir} , module_name = {module_name}")
     # For stubs in pytype's stubs/ directory, we use the module name prefixed
     # with "pytd:" for the filename. Package filenames need an "/__init__.pyi"
     # suffix for Module.is_package to recognize them.

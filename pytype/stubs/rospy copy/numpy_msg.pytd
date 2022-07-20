@@ -1,0 +1,9 @@
+from typing import BinaryIO, Type, TypeVar
+
+from genpy import Message
+
+_TMessage = TypeVar("_TMessage", bound=Message)
+
+def _serialize_numpy(self: _TMessage, buff: BinaryIO) -> None: ...
+def _deserialize_numpy(self: _TMessage, str: bytes) -> _TMessage: ...
+def numpy_msg(msg_type: Type[_TMessage]) -> Type[_TMessage]: ...

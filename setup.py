@@ -12,6 +12,8 @@ import sys
 
 from setuptools import setup
 
+from pytype.typeshed.stubs import geometry_msgs
+
 # Path to directory containing setup.py
 here = os.path.abspath(os.path.dirname(__file__))
 
@@ -87,13 +89,21 @@ def get_data_files():
                                check=['attr', '*.pytd'])
   stdlib = scan_package_data(['stubs', 'stdlib'], '*.pytd',
                              check=['*.pytd'])
+  rospy = scan_package_data(['stubs', 'rospy'], '*.pytd',
+                             check=['impl','*.pytd'])
+  print(f"rospy = {rospy}")
+  input()
+  sensor_msgs = scan_package_data(['stubs', 'sensor_msgs'], '*.pytd',
+                             check=['msg', 'srv' , '*.pytd'])
+  geometry_msgs = scan_package_data(['stubs', 'geometry_msgs'], '*.pytd',
+                             check=['msg','*.pytd'])
   typeshed = (scan_package_data(['typeshed'], '*.pyi',
                                 check=['stdlib', '*.pyi']) +
               ['typeshed/stdlib/VERSIONS'] +
               scan_package_data(['typeshed'], 'METADATA.toml',
                                 check=['stubs', 'six', 'METADATA.toml']))
   merge_pyi_grammar = ['tools/merge_pyi/Grammar.txt']
-  return builtins + stdlib + typeshed + merge_pyi_grammar
+  return builtins + stdlib + rospy + sensor_msgs + geometry_msgs + typeshed + merge_pyi_grammar
 
 
 def get_long_description():

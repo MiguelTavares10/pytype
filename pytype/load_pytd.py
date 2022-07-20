@@ -705,6 +705,7 @@ class Loader:
       return mod
 
     file_ast, path = self._import_file(module_name)
+    print(f"module name = {module_name}")
     if file_ast:
       if _is_default_pyi(path) or path == os.devnull:
         # Remove the default module from the cache; we will return it later if
@@ -719,8 +720,8 @@ class Loader:
     # The standard library is (typically) towards the end of PYTHONPATH.
     mod = self._load_builtin("stdlib", module_name)
     if mod:
+      print(f"returned in stdlib {module_name}")
       return mod
-
     # Third party modules from typeshed (typically site-packages) come last.
     mod = self._load_builtin("third_party", module_name, third_party_only=True)
     if mod:

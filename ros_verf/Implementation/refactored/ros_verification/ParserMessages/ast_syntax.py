@@ -30,6 +30,13 @@ class Literal:
 
     def __str__(self):
         return self.valuestr
+class Minus:
+    
+    def __init__(self,args):
+        self.var = args[0]
+        
+    def __str__(self):
+        return "( - " + self.var +  ")"
 
 class Variable:
     def __init__(self,name):
@@ -60,7 +67,7 @@ class LogicalExpression:
             self.left = left
             self.operador = operador
             self.right = right
-    
+            
     def get_left_side(self):
         return self.left
     

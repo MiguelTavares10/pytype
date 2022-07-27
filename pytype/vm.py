@@ -149,7 +149,7 @@ class VirtualMachine:
       self._late_annotations_stack = old_late_annotations_stack
 
   def trace_opcode(self, op, symbol, val):
-    print(f" op = {op}, symbol = {symbol} , val = {val}")
+    #print(f" op = {op}, symbol = {symbol} , val = {val}")
     """Record trace data for other tools to use."""
     if not self._trace_opcodes:
       return
@@ -173,9 +173,6 @@ class VirtualMachine:
     else:
       data = (get_data(val),)
     rec = (op, symbol, data)
-    if isinstance(op, opcodes.MAKE_FUNCTION):
-      self.functions_made.append(symbol)
-    
     self.opcode_traces.append(rec)
 
   def remaining_depth(self):
@@ -215,6 +212,11 @@ class VirtualMachine:
     return state
 
   functions_made= []
+  last_load_name = ""
+  last_load_const = ""
+  builded_load_name = ""
+  builded_load_const = ""
+  subscriber_methodcall = False
   def run_frame(self, frame, node, annotated_locals=None):
     """Run a frame (typically belonging to a method)."""
     self.push_frame(frame)
@@ -251,19 +253,54 @@ class VirtualMachine:
           # we can't process this block any further
           break
         if isinstance(op,opcodes.OpcodeWithArg):
-          print(f"run op in block type op = {type(op)} , pretty_arg = {op.pretty_arg}")
+          print(f" op info = op.index = {op.index} , op.arg = {op.arg} , op.line = {op.line} , op.pretty_args = {op.pretty_arg}")
           if isinstance(op,opcodes.MAKE_FUNCTION):
-            self.functions_made.append(op.pretty_arg)
-          if isinstance(op, opcodes.LOAD_NAME):
-            if op.pretty_arg in self.functions_made:
-              new_op = opcodes.CALL_FUNCTION((op.index + 1),op.line, 3, op.pretty_arg)
-              state=self.run_instruction(new_op,state)
-              new_why = finally_tracker.process(new_op, state, self.ctx)
-              if new_why:
-                state = state.set_why(new_why)
-              if state.why:
-              # we can't process this block any further
-                break
+            self.functions_made.append((self.last_load_const,self.builded_load_name, self.builded_load_const))
+          elif isinstance(op,opcodes.BUILD_CONST_KEY_MAP):
+            self.builded_load_name = self.last_load_name
+            self.builded_load_const = self.last_load_const
+          elif isinstance(op, opcodes.LOAD_METHOD):
+            if op.pretty_arg == "Subscriber":
+              print(f"is subscriber {op.pretty_arg}")   
+              self.subscriber_methodcall = True
+              
+
+
+          elif isinstance(op, opcodes.LOAD_CONST) and isinstance(op.pretty_arg,str):
+            self.last_load_const = op.pretty_arg
+          elif isinstance(op, opcodes.LOAD_NAME):
+            if self.subscriber_methodcall == True:
+              for tuples_function in self.functions_made:
+                  if ( "'" + op.pretty_arg + "'" ) == tuples_function[0]:
+                    self.subscriber_methodcall = False
+                    new_ops = []                  
+                    arg_name = tuples_function[2]
+                    arg_name = arg_name.replace("'","")
+                    arg_name = arg_name.replace(")","")
+                    arg_name = arg_name.replace("(","")
+                    arg_name = arg_name.replace(",","")
+                    func_name = tuples_function[0].replace("'","")
+                    arg_type = tuples_function[1]
+                    new_ops.append(opcodes.LOAD_NAME((op.index),op.line, op.arg - 3 , arg_type))
+                    new_ops.append(opcodes.CALL_FUNCTION((op.index),op.line, 0 , 0))
+                    new_ops.append(opcodes.STORE_NAME((op.index),op.line, op.arg + 4 , arg_name))
+                    new_ops.append(opcodes.LOAD_NAME((op.index),op.line, op.arg , func_name))
+                    new_ops.append(opcodes.LOAD_NAME((op.index),op.line, op.arg + 4, arg_name))
+                    new_ops.append(opcodes.CALL_FUNCTION((op.index),op.line, 1, 1))
+                    print(f"new_ops = {new_ops}")
+                    
+                    for new_op in new_ops:
+                      print(f"new_op = {new_op} , arg = {new_op.arg} , pretty_arg = {new_op.pretty_arg}")
+                      new_op.code = op.code
+                      state=self.run_instruction(new_op,state)
+                      new_why = finally_tracker.process(new_op, state, self.ctx)
+                      if new_why:
+                        state = state.set_why(new_why)
+                      if state.why:
+                      # we can't process this block any further
+                        break
+
+            self.last_load_name = op.pretty_arg
       assert op
       if state.why:
         # If we raise an exception or return in an except block do not
@@ -627,7 +664,6 @@ class VirtualMachine:
     print(f"state = {state},  args = {args}")
     for arg in args:
       print(f"arg= {arg.data}")
-    input()
     if starstarargs:
       kwnames = abstract_utils.get_atomic_python_constant(starstarargs, tuple)
       n = len(args) - len(kwnames)
@@ -1281,10 +1317,12 @@ class VirtualMachine:
   def byte_INPLACE_TRUE_DIVIDE(self, state, op):
     return self.inplace_operator(state, "__itruediv__")
 
+  refinement_annot = ""
   def byte_LOAD_CONST(self, state, op):
     try:
       raw_const = self.frame.f_code.co_consts[op.arg]
       self.last_cond_const.append((raw_const,"Const"))
+      annotation_string = raw_const
     except IndexError:
       # We have tried to access an undefined closure variable.
       # There is an associated LOAD_DEREF failure where the error will be
@@ -1338,8 +1376,8 @@ class VirtualMachine:
       self.ctx.errorlog.name_error(self.frames, name, details=details)
       return self.ctx.convert.unsolvable
   
-  messageAnnot= ""
-
+  messageAnnot = ""
+  annotated_var = False
   last_cond_const= []
   def byte_LOAD_NAME(self, state, op):
     """Load a name. Can be a local, global, or builtin."""
@@ -1373,6 +1411,9 @@ class VirtualMachine:
     vm_utils.check_for_deleted(state, name, val, self.ctx)
     self.trace_opcode(op, name, val)
     print(f" trace opcode --> op = {op} , name = {name}, val = {val}")
+    if name  == 'Annotated':
+      self.annotated_var = True
+
     return state.push(val)
 
 
@@ -1382,6 +1423,7 @@ class VirtualMachine:
     annotHandler = AnnotatedHandler.getInstance()
     value, typeVal = self.last_cond_const[-1]
     print(f"name = {name} and value = {value}")
+    
 
     if self.bin_operator == "__add__":
       self.bin_operator = ""
@@ -1434,11 +1476,12 @@ class VirtualMachine:
     caminho = f"{folder}/{value}.msg"
     print(caminho)
     if os.path.isfile(caminho) :
-      print("é ficheiro")
+      print(f"é ficheiro , name = {name}")
       line = ([name],"create_datatype",[value])
       annotHandler.add_message_annotated(name)
       veriHandler.run_verification(line)
       print(line)
+      
 
     return self._pop_and_store(state, op, name, local=True)
 
@@ -1449,6 +1492,11 @@ class VirtualMachine:
   def byte_LOAD_FAST(self, state, op):
     """Load a local. Unlike LOAD_NAME, it doesn't fall back to globals."""
     name = self.frame.f_code.co_varnames[op.arg]
+    annotHandler = AnnotatedHandler.getInstance()
+    if annotHandler.message_is_annotated(name):
+      self.messageAnnot = name
+    else:
+      self.last_cond_const.append((name,"Var"))
     try:
       state, val = self.load_local(state, name)
     except KeyError:
@@ -1467,7 +1515,191 @@ class VirtualMachine:
 
   def byte_STORE_FAST(self, state, op):
     name = self.frame.f_code.co_varnames[op.arg]
-    return self._pop_and_store(state, op, name, local=True)
+    ret_value = self._pop_and_store(state, op, name, local=True)
+    veriHandler = VerificationHandler.getInstance()
+    annotHandler = AnnotatedHandler.getInstance()
+    value, typeVal = self.last_cond_const[-1]
+    print(f"name = {name} and value = {value} annotated_var = {self.annotated_var}")
+    
+    if self.annotated_var:
+      self.annotated_var = False
+      ref = value
+      annotHandler.add_var_annotated(name)
+      #TODO: guardar variavel anotada e mandar para  verificação
+      
+      if  "Unit" in ref:
+        if " and " in ref:
+          splitRef = ref.split(" and ")
+          for sRef in splitRef:
+            if " or " in sRef:
+              splitOr = sRef.split(" or ")
+              print(f"sRef = {splitOr}")
+              conds = []
+              for orRef in splitOr:
+                if not "Unit" in orRef:
+                  orString = orRef.replace("_","var_value( "+name+" )")
+                  conds.append(orString)
+                  print(f"appended {orString} ")
+              print(f"conds = {conds}")
+              if len(conds) > 1:
+                lineOr = "z3.Or(" + conds[0]
+                for c in conds[1:]:
+                  lineOr += "," + c
+
+                lineOr += ")"
+                lineCond = ([name],"condition",[lineOr])
+                print(f"line = {lineCond}")
+                
+                veriHandler.run_verification(lineCond)
+
+              
+            elif "Unit" in sRef:
+              newRef = sRef.replace("Unit","")
+              newRef = newRef.replace("(","")
+              newRef = newRef.replace(")","")
+              newRef = newRef.replace(" ","")
+              newRef = newRef.replace("'","")
+              line = ([name],"create_unit",[StrLit(newRef)])
+              print(f"line = {line}")
+              
+
+              veriHandler.run_verification(line)
+          for sRef in splitRef:
+            if not "Unit" in sRef and not " or " in sRef:
+              cond = sRef.replace("_","var_value( "+name+" )")
+              lineCond = ([name],"condition",[cond])
+              print(f"lineCond = {lineCond}")
+              
+              veriHandler.run_verification(lineCond)
+
+
+        else:
+          newRef = ref.replace("Unit","")
+          newRef = newRef.replace("(","")
+          newRef = newRef.replace(")","")
+          newRef = newRef.replace(" ","")
+          newRef = newRef.replace("'","")
+          line = ([name],"create_unit",[StrLit(newRef)])
+          
+          print(f"line = {line}")
+
+          veriHandler.run_verification(line)
+
+      else:
+        line = ([name],"create_unit",[StrLit("None")])
+        print(f"line = {line}")
+        veriHandler.run_verification(line)
+        ref = ref.replace("_","var_value( "+name+" )")
+        if " and " in ref:
+          splitRef = ref.split(" and ")
+          for sRef in splitRef:
+            if " or " in sRef:
+              splitOr = sRef.split(" or ")
+              conds = []
+              for orRef in splitOr:
+                if not "Unit" in orRef:
+                  conds.append(orRef)
+              
+              if len(conds) > 1:
+                lineOr = "z3.Or(" + conds[0]
+                for c in conds[1:]:
+                  lineOr += "," + c
+
+                lineOr += ")"
+                lineCond = ([name],"condition",[lineOr])
+                print(f"line = {lineCond}")
+                
+                veriHandler.run_verification(lineCond)
+            else:
+                lineCond = ([name],"condition",[sRef])
+                print(f"line = {lineCond}")
+                
+                veriHandler.run_verification(lineCond)
+        elif " or " in sRef:
+          splitOr = ref.split(" or ")
+          conds = []
+          for orRef in splitOr:
+            if not "Unit" in orRef:
+              conds.append(orRef)
+          
+          if len(conds) > 1:
+            lineOr = "z3.Or(" + conds[0]
+            for c in conds[1:]:
+              lineOr += "," + c
+
+            lineOr += ")"
+            lineCond = ([name],"condition",[lineOr])
+            print(f"line = {lineCond}")
+            
+            veriHandler.run_verification(lineCond)
+        
+        else:
+            lineCond = ([name],"condition",[ref])
+            print(f"line = {lineCond}")
+            veriHandler.run_verification(lineCond)
+     
+      
+
+    elif self.bin_operator == "__add__":
+      self.bin_operator = ""
+      otherValue, otherTypeVal = self.last_cond_const[-2]
+      if typeVal == "Var":
+        if otherTypeVal == "Var":
+          line =  [[name], "plus_vars",[name,value,otherValue]]
+          print(f"line = {line}")
+          veriHandler.run_verification(line)
+        else:
+          line =  [[name], "plus_cons",[name,value,otherValue]]
+          print(f"line = {line}")
+          veriHandler.run_verification(line)
+      else:
+        line =  [[name], "plus_cons",[name,otherValue,value]]
+        print(f"line = {line}")
+        veriHandler.run_verification(line)
+
+    elif self.bin_operator == "__sub__":
+      self.bin_operator = ""
+      otherValue, otherTypeVal = self.last_cond_const[-2]
+      if typeVal == "Var":
+        if otherTypeVal == "Var":
+          line =  [[name], "minus_vars",[name,otherValue,value]]
+          print(f"line = {line}")
+          veriHandler.run_verification(line)
+        else:
+          line =  [[name], "minus_cons_var",[name,otherValue,value]]
+          print(f"line = {line}")
+          veriHandler.run_verification(line)
+      else:
+        line =  [[name], "minus_var_cons",[name,otherValue,value]]
+        print(f"line = {line}")
+        veriHandler.run_verification(line)
+
+
+    elif annotHandler.var_is_annotated(name):
+      print(f"{name} = {self.last_cond_const[-1]}")
+      #TODO: check if the name is already annotated and send it info to verification
+      if typeVal == "Const":
+        cond = ([name],"add_value",[name,value])
+        print(f"cond = {cond}")
+        
+        veriHandler.run_verification(cond)
+      elif typeVal == "Var":
+        cond = ([name],"assign",[name,value])
+        print(f"cond = {cond}")
+        
+        veriHandler.run_verification(cond)
+    
+    folder = "./ros_verf/Implementation/refactored/ros_verification/ROSMessages"
+    caminho = f"{folder}/{value}.msg"
+    print(caminho)
+    if os.path.isfile(caminho) :
+      print(f"é ficheiro , name = {name}")
+      line = ([name],"create_datatype",[value])
+      annotHandler.add_message_annotated(name)
+      veriHandler.run_verification(line)
+      print(line)
+
+    return ret_value
 
   def byte_DELETE_FAST(self, state, op):
     name = self.frame.f_code.co_varnames[op.arg]
@@ -1475,7 +1707,13 @@ class VirtualMachine:
 
   def byte_LOAD_GLOBAL(self, state, op):
     """Load a global variable, or fall back to trying to load a builtin."""
-    name = self.frame.f_code.co_names[op.arg]
+    name = self.frame.f_code.co_names[op.arg]  
+    annotHandler = AnnotatedHandler.getInstance()
+
+    if annotHandler.message_is_annotated(name):
+      self.messageAnnot = name
+    else:
+      self.last_cond_const.append((name,"Var"))
     if name == "None":
       # Load None itself as a constant to avoid the None filtering done on
       # variables. This workaround is safe because assigning to None is a
@@ -1483,6 +1721,8 @@ class VirtualMachine:
       return self.load_constant(state, op, None)
     try:
       state, val = self.load_global(state, name)
+      if annotHandler.message_is_annotated(name):
+        self.messageAnnot = name
     except KeyError:
       try:
         state, val = self.load_builtin(state, name)
@@ -1841,14 +2081,20 @@ class VirtualMachine:
   def byte_STORE_ATTR(self, state, op):
     """Store an attribute."""
     name = self.frame.f_code.co_names[op.arg]
+    print(f"name before var with attr = {name}")
+    print(f"messageAnot before var with attr = {self.messageAnnot}")
     annotHandler = AnnotatedHandler.getInstance()
     veriHandler = VerificationHandler.getInstance()
     self.messageAnnot += "." + transform_name(name)
     name = self.messageAnnot
+    print(f"name after attr = {name}")
+        
     self.messageAnnot = ""
     print(f" Message var = {self.messageAnnot}")
+
     if annotHandler.var_is_annotated(name):
       print(f"{name} = {self.last_cond_const[-1]}")
+      
       value, typeVal = self.last_cond_const[-1]
       if typeVal == "Const":
         cond = ([name],"add_value",[name,value])
@@ -1897,6 +2143,7 @@ class VirtualMachine:
       if isinstance(typ,abstract.PyTDClassRefined):
         typ.add_var_name(name)
         print(f"var = {name} refinement = {typ.refinement}")
+        
         veriHandler = VerificationHandler.getInstance()
         annotHandler = AnnotatedHandler.getInstance()
         annotHandler.add_var_annotated(name)
@@ -1925,6 +2172,7 @@ class VirtualMachine:
                   lineOr += ")"
                   lineCond = ([name],"condition",[lineOr])
                   print(f"line = {lineCond}")
+                  
                   veriHandler.run_verification(lineCond)
 
                 
@@ -1943,6 +2191,7 @@ class VirtualMachine:
                 cond = sRef.replace("_","var_value( "+name+" )")
                 lineCond = ([name],"condition",[cond])
                 print(f"lineCond = {lineCond}")
+                
                 veriHandler.run_verification(lineCond)
 
 
@@ -1980,12 +2229,14 @@ class VirtualMachine:
                   lineOr += ")"
                   lineCond = ([name],"condition",[lineOr])
                   print(f"line = {lineCond}")
+                  
                   veriHandler.run_verification(lineCond)
               else:
                   lineCond = ([name],"condition",[sRef])
                   print(f"line = {lineCond}")
+                  
                   veriHandler.run_verification(lineCond)
-          else:
+          elif " or " in ref:
             splitOr = ref.split(" or ")
             conds = []
             for orRef in splitOr:
@@ -2000,7 +2251,14 @@ class VirtualMachine:
               lineOr += ")"
               lineCond = ([name],"condition",[lineOr])
               print(f"line = {lineCond}")
+              
               veriHandler.run_verification(lineCond)
+          
+          else:
+            lineCond = ([name],"condition",[ref])
+            print(f"line = {lineCond}")
+            
+            
 
       self._record_annotation(state.node, op, name, typ)
 

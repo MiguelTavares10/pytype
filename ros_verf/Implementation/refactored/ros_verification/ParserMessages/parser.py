@@ -1,6 +1,6 @@
 from lark import Lark, Transformer, v_args
 import os
-from .ast_syntax import LogicalExpression, IfExpression, Condition, Literal, Variable,FunctionExpression, AritmeticExpression, ClassVariable
+from .ast_syntax import LogicalExpression, IfExpression, Condition, Literal, Minus, Variable,FunctionExpression, AritmeticExpression, ClassVariable
 
 class TreeToROS(Transformer):
         def __init__(self):
@@ -39,11 +39,11 @@ class TreeToROS(Transformer):
                 else:
                         return ClassVariable(args)
 
-        # def expr_bracket(self,args):
-        #         return args[0]
+        def expr_bracket(self,args):
+                return "(" + args[0] + ")"
 
-        # def expr_unop(self,args):
-        #         return args[0]
+        def expr_unop(self,args):
+                return "( - " + args[1].__str__() + " )"
 
 # Creation of the parser
 def mk_parser(rule="start"):
@@ -62,7 +62,7 @@ def parse_comments(file):
         #caminho = file +".msg"
         if os.path.isfile(caminho) :
                 print(f"{caminho} é ficheiro")
-
+    
                 readFile = open(caminho, "r")
 
                 lines = readFile.readlines()

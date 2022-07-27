@@ -39,7 +39,7 @@ def build_initial_context():
         outputs = [TVar],
         inputs = [TVar, z3.Reals],
         pre_condition = [lambda ins: True],
-        post_condition = [lambda ins, outs: z3.And(var_value(outs[0]) == ins[1],(var_unit(outs[0]) == var_unit(ins[0])))],
+        post_condition = [lambda ins, outs: z3.And(var_value(outs[0]) == ins[1],var_unit(outs[0]) == var_unit(ins[0]))],
     )
 
     context["assign"] = VFunction(
@@ -289,6 +289,7 @@ def verify_lines(line: Line, context: dict, funcContext , solver=None):
                 solver.push()
                 propData: Union[bool,z3.ExprRef]= prop(sym_inp, sym_out)
                 print(propData)
+                input()
                 solver.add(propData)
 
         
@@ -298,11 +299,13 @@ def verify_lines(line: Line, context: dict, funcContext , solver=None):
 
         propo : Union[bool,z3.ExprRef]= prop(symbolic_inputs)
         print(propo)
+        input()
         solver.push()
         solver.add(z3.Not(propo))
     
 
-     
+        #print(solver)
+        #input()
         r = solver.check()
         if r == z3.sat:
             raise ValueError("Precondition {} of {} is not satisfied. Example is: {}".format(prop, func, solver.model()))
@@ -314,6 +317,7 @@ def verify_lines(line: Line, context: dict, funcContext , solver=None):
         solver.push()
         propData: Union[bool,z3.ExprRef]= prop(symbolic_inputs, symbolic_outputs)
         print(propData)
+        input()
         solver.add(propData)
 
     print(COMMAND_LINE_BRACKETS)
@@ -369,7 +373,7 @@ def verify_lines(line: Line, context: dict, funcContext , solver=None):
             
 
             print(cond, "added to solver")
-
+            input()
             solver.add(z3.Not(eval(cond)))
             r = solver.check()
             if r == z3.sat:

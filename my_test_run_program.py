@@ -42,8 +42,8 @@ class AnnotationsTest(VmTestBase):
 
   def my_test(self):
 
-    folder = "./"
-    file = "simple_pub_sub.py"
+    folder = "./tests_ros/"
+    file = "test7_ok.py"
     result = []
     caminho = f"{folder}/{file}"
     #caminho = file +".msg"

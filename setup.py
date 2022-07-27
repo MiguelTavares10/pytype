@@ -91,8 +91,6 @@ def get_data_files():
                              check=['*.pytd'])
   rospy = scan_package_data(['stubs', 'rospy'], '*.pytd',
                              check=['impl','*.pytd'])
-  print(f"rospy = {rospy}")
-  input()
   sensor_msgs = scan_package_data(['stubs', 'sensor_msgs'], '*.pytd',
                              check=['msg', 'srv' , '*.pytd'])
   geometry_msgs = scan_package_data(['stubs', 'geometry_msgs'], '*.pytd',

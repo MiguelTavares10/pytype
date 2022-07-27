@@ -16,14 +16,15 @@ expr_bool : expr_arit1 (LT | LTE | GT | GTE | EQUAL | DIFF ) expr_bool          
 expr_arit1 :expr_arit2 (MULT | QUOT) expr_arit1                                                                 -> expr_arit
           | expr_arit2                                                                                          -> expr
 
-expr_arit2 : expr_final (PLUS | MINUS ) expr_arit2                                                              -> expr_arit
-          | expr_final                                                                                          -> expr
+expr_arit2 : expr_unop (PLUS | MINUS ) expr_arit2                                                               -> expr_arit
+          | expr_unop                                                                                           -> expr
 
+expr_unop : expr_final                                                                                          -> expr
+           | MINUS expr_final                                                                                   -> expr_unop
 
 expr_final :( BOOL_LIT | INT_LIT | FLOAT_LIT | STRING_LIT)                                                      -> expr_literal
            | VAR ("." VAR)*                                                                                     -> expr_var
            | "(" expr_log ")"                                                                                   -> expr_bracket
-           | (NOT | MINUS) expr_log                                                                             -> expr_unop
 
 //opLog : AND | OR
 

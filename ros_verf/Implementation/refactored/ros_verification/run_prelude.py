@@ -54,15 +54,14 @@ def run_prelude():
                                 contextData[inpVar.name].add_data(name, getattr(contextData[inpVar.name].get_data_type(),transform_name(name)))
 
 
+                test = contextData[inpVar.name].get_var_names(contextData)
 
+                print(f"get var names = {test}")
                 comments = parse_comments(inpVar.name)
                 parse = []
                 for com in comments:
                         parse.append(mk_parser().parse(com))
                 contextData[inpVar.name].add_conditions(parse,contextData)
-                print(f"parse = {parse}")
-
-                print(f"contextData conditions = {contextData[inpVar.name].get_annotations()}")
 
                 contextDataResult.update(contextData) 
 

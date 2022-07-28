@@ -13,7 +13,6 @@ def callback(msg : LaserScan):
     z = 50
     move.linear.x = x 
     #move.angular.z = z 
-    z = 101
     pub.publish(move)
 
 

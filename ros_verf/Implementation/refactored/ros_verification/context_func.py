@@ -73,6 +73,8 @@ class FuncContext:
                 self.annotations = [] 
                 self.func = "Nenhuma"
                 self.keep_func = "Nenhuma"
+                self.constsFunc = {}
+
 
 
         def get_name(self):
@@ -86,6 +88,7 @@ class FuncContext:
                 self.dataType = data 
 
         def add_data(self,dataName,content):
+                print(f"add data -> dataName = {dataName} , content = {content}")
                 for field in self.fields:
                         if transform_name(dataName)== field.get_name():
                                field.add_data(content)
@@ -94,6 +97,7 @@ class FuncContext:
 
                 for field in self.fields:
                         if dataName == field.get_name():
+                                print()
                                 return field.get_data()       
 
                 for field in self.fields:
@@ -105,13 +109,28 @@ class FuncContext:
         def get_datas(self,contextFunc):
                 result = []
                 for field in self.fields:
+                        print(f"field name = {field.get_name()}")
                         if not isinstance(field.get_data(),str):
                                 result.append((field.get_name(),field.get_data()))
                         if field.typ in contextFunc:
                                 data = contextFunc[field.typ].get_datas(contextFunc)
+                                print(f"field_type = {field.typ}, data = {data}")
                                 result += data
                 return result
 
+
+
+        def get_var_names(self,contextFunc):
+                result = []
+                for field in self.fields:
+                        if field.typ in contextFunc:
+                                fieldResult = contextFunc[field.typ].get_var_names(contextFunc)
+                                for res in fieldResult:
+                                        result.append(field.name + "." +res)
+                        else:
+                                result.append(field.name)
+                return result
+        
 
         def add_datatype_name(self,name):
                 self.datatype_name = name
@@ -228,13 +247,18 @@ class FuncContext:
 
         def create_line_cond(self,outs,InputCond,funContext):
                 if isinstance(InputCond,LogicalExpression):
-
+                        print(f"test operator = {InputCond.get_operador()}")
+                        input()
                         leftside =self.create_line_cond(outs,InputCond.get_left_side(),funContext)
                         rightside =self.create_line_cond(outs,InputCond.get_right_side(),funContext)
-
+                        print(f"left side = {leftside}")
+                        print(f"righ side = {rightside}")
+                        input()
                         if InputCond.get_operador() == "and":
                                 return z3.And(leftside,rightside)
                         elif InputCond.get_operador == "or":
+                                print("ENTREI NO OR ")
+                                input()
                                 return z3.Or(self.create_line_cond(outs,InputCond.get_left_side(),funContext),self.create_line_cond(outs,InputCond.get_right_side(),funContext))
                         
                 elif isinstance(InputCond,IfExpression):

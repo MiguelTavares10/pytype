@@ -262,26 +262,7 @@ class FuncContext:
                                 return result
                 elif isinstance(InputCond,Condition):
                           #TODO
-                        
-                        print(f"annotation appended in Context {InputCond.__str__()}")  
-                        stringInput = InputCond.__str__()
-                        start = "var_value ( "
-                        end = " )"
-                        idx1 = stringInput.index(start)
-                        idx2 = stringInput.index(end)
-                        varResult = stringInput.index(end)
-                        var = stringInput[idx1 + len(start): idx2]
-                        varResult = outs
-                        if var.__contains__("."):
-                                varSplit = var.split(".")
-                                for varS in varSplit:
-                                        varResult = self.get_data(transform_name(varS),funContext)(varResult)
-                        else:
-                                varResult = self.get_data(transform_name(var),funContext)(varResult)
-                        res = stringInput.replace(var,varResult.__str__())
-                        print(f"res = {res}")
-                        print(f"self.name = {self.name}")
-                        input()
-                        self.annotations.append(res)
+                        print(f"annotation appended in Context {InputCond.__str__()}")  	                  
+                        self.annotations.append(InputCond.__str__())
                         return True                      
 

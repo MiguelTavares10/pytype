@@ -280,6 +280,7 @@ class FuncContext:
                                 varResult = self.get_data(transform_name(var),funContext)(varResult)
                         res = stringInput.replace(var,varResult.__str__())
                         print(f"res = {res}")
+                        print(f"self.name = {self.name}")
                         input()
                         self.annotations.append(res)
                         return True                      

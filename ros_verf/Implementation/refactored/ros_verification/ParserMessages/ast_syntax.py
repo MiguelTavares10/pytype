@@ -36,7 +36,7 @@ class Minus:
         self.var = args[0]
         
     def __str__(self):
-        return "( - " + self.var +  ")"
+        return "-" + self.var 
 
 class Variable:
     def __init__(self,name):
@@ -103,11 +103,11 @@ class Condition:
     def __init__(self,left,operator,right):
 
             if isinstance(left, Variable) or isinstance(left,ClassVariable):
-                self.left = "var_value ( " + left.__str__() + " )"
+                self.left = left.__str__() 
             else:
                 self.left = left
             if isinstance(right, Variable) or isinstance(right,ClassVariable):
-                self.right = "var_value ( " + right.__str__() + " )"
+                self.right =  right.__str__()
             else:
                 self.right = right
             self.operador = operator

@@ -12,7 +12,7 @@ def get_datatype(input, msg_found =None):
     firstData : msg_ros.ROSMsgFormat = get_datatype_input(input)
     msg_found.append(input)
     output = []
-    baseTypes = ["float64","uint32","time","string","float64[36]"]
+    baseTypes = ["float64","uint32","time","string","float64[36]","int32"]
     fieldsMsg = firstData.fields
     for field in fieldsMsg:
         fieldtyp : str = field.typ

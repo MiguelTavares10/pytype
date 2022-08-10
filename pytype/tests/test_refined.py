@@ -22,8 +22,8 @@ class TestRefined(test_base.BaseTest):
 
 
   def test_refined_file(self):
-    folder = "./"
-    file = "simple_pub_sub.py"
+    folder = "./tests_ros/"
+    file = "test11_ok.py"
     result = []
     caminho = f"{folder}/{file}"
     #caminho = file +".msg"

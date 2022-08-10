@@ -1,6 +1,8 @@
 import subprocess
 
 def transform_var_types(var_type):
+    if var_type == "int32":
+        return int
     if var_type == "float64":
         return float
     if var_type == "uint32":

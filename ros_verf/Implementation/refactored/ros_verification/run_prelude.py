@@ -60,6 +60,7 @@ def run_prelude():
                 comments = parse_comments(inpVar.name)
                 parse = []
                 for com in comments:
+                        print(com)
                         parse.append(mk_parser().parse(com))
                 contextData[inpVar.name].add_conditions(parse,contextData)
 

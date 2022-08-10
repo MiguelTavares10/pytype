@@ -43,13 +43,12 @@ class AnnotationsTest(VmTestBase):
   def my_test(self):
 
     folder = "./tests_ros/"
-    file = "test7_ok.py"
+    file = "test20_ok.py"
     result = []
     caminho = f"{folder}/{file}"
     #caminho = file +".msg"
     if os.path.isfile(caminho) :
             print(f"{caminho} é ficheiro")
-
             readFile = open(caminho, "r")
 
             lines = readFile.readlines()

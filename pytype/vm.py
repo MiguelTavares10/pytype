@@ -1322,7 +1322,7 @@ class VirtualMachine:
     try:
       raw_const = self.frame.f_code.co_consts[op.arg]
       self.last_cond_const.append((raw_const,"Const"))
-      annotation_string = raw_const
+      self.annotation_string = raw_const
     except IndexError:
       # We have tried to access an undefined closure variable.
       # There is an associated LOAD_DEREF failure where the error will be
@@ -1422,6 +1422,11 @@ class VirtualMachine:
     veriHandler = VerificationHandler.getInstance()
     annotHandler = AnnotatedHandler.getInstance()
     value, typeVal = self.last_cond_const[-1]
+
+    if self.load_attr_on == True :
+      value = self.messageAnnot
+      typeVal = "Var"
+      self.load_attr_on = False
     print(f"name = {name} and value = {value}")
     
 
@@ -1458,9 +1463,14 @@ class VirtualMachine:
         line =  [[name], "minus_var_cons",[name,otherValue,value]]
         print(f"line = {line}")
         veriHandler.run_verification(line)
+    
+    annotatedName = name
+    print(f"name = {name} type = {type(name)}")
+    if "." in name:
+      splitName = name.split(".")
+      annotatedName = splitName[0]
 
-
-    elif annotHandler.var_is_annotated(name):
+    elif annotHandler.var_is_annotated(annotatedName):
       print(f"{name} = {self.last_cond_const[-1]}")
       #TODO: check if the name is already annotated and send it info to verification
       if typeVal == "Const":
@@ -1537,7 +1547,8 @@ class VirtualMachine:
               conds = []
               for orRef in splitOr:
                 if not "Unit" in orRef:
-                  orString = orRef.replace("_","var_value( "+name+" )")
+                  orString = orRef.replace("_",name)
+                  #orString = orRef.replace("_","var_value( "+name+" )")
                   conds.append(orString)
                   print(f"appended {orString} ")
               print(f"conds = {conds}")
@@ -1566,7 +1577,9 @@ class VirtualMachine:
               veriHandler.run_verification(line)
           for sRef in splitRef:
             if not "Unit" in sRef and not " or " in sRef:
-              cond = sRef.replace("_","var_value( "+name+" )")
+              cond = sRef.replace("_",name)
+              #cond = sRef.replace("_","var_value( "+name+" )")
+              #cond = sRef.replace(name,"var_value( "+name+" )")
               lineCond = ([name],"condition",[cond])
               print(f"lineCond = {lineCond}")
               
@@ -1589,7 +1602,8 @@ class VirtualMachine:
         line = ([name],"create_unit",[StrLit("None")])
         print(f"line = {line}")
         veriHandler.run_verification(line)
-        ref = ref.replace("_","var_value( "+name+" )")
+        ref = ref.replace("_",name)
+        #ref = ref.replace("_","var_value( "+name+" )")
         if " and " in ref:
           splitRef = ref.split(" and ")
           for sRef in splitRef:
@@ -1675,6 +1689,9 @@ class VirtualMachine:
         veriHandler.run_verification(line)
 
 
+  
+    
+  
     elif annotHandler.var_is_annotated(name):
       print(f"{name} = {self.last_cond_const[-1]}")
       #TODO: check if the name is already annotated and send it info to verification
@@ -2007,11 +2024,15 @@ class VirtualMachine:
       op_arg = slots.CMP_IN
     return self._compare_op(state, op_arg)
 
+  load_attr_on = False
   def byte_LOAD_ATTR(self, state, op):
     """Pop an object, and retrieve a named attribute from it."""
     name = self.frame.f_code.co_names[op.arg]
     
     self.messageAnnot += "." + transform_name(name)
+    self.load_attr_on = True
+    print(f"self.messageAnnot = {self.messageAnnot}")
+
     state, obj = state.pop()
     log.debug("LOAD_ATTR: %r %r", obj, name)
     with self._suppress_opcode_tracing():
@@ -2080,6 +2101,7 @@ class VirtualMachine:
 
   def byte_STORE_ATTR(self, state, op):
     """Store an attribute."""
+    self.load_attr_on = False
     name = self.frame.f_code.co_names[op.arg]
     print(f"name before var with attr = {name}")
     print(f"messageAnot before var with attr = {self.messageAnnot}")
@@ -2116,6 +2138,8 @@ class VirtualMachine:
     state = state.forward_cfg_node()
     # We need to trace both the object and the attribute.
     self.trace_opcode(op, name, (obj, val))
+    self.last_cond_const.append((name,"Var"))
+    print(f"name ADDED TO LAST COND CONST= {name}")
     return state
 
   def byte_DELETE_ATTR(self, state, op):
@@ -2143,7 +2167,6 @@ class VirtualMachine:
       if isinstance(typ,abstract.PyTDClassRefined):
         typ.add_var_name(name)
         print(f"var = {name} refinement = {typ.refinement}")
-        
         veriHandler = VerificationHandler.getInstance()
         annotHandler = AnnotatedHandler.getInstance()
         annotHandler.add_var_annotated(name)
@@ -2160,7 +2183,8 @@ class VirtualMachine:
                 conds = []
                 for orRef in splitOr:
                   if not "Unit" in orRef:
-                    orString = orRef.replace("_","var_value( "+name+" )")
+                    orString = orRef.replace("_",name)
+                    #orString = orRef.replace("_","var_value( "+name+" )")
                     conds.append(orString)
                     print(f"appended {orString} ")
                 print(f"conds = {conds}")
@@ -2188,7 +2212,8 @@ class VirtualMachine:
                 veriHandler.run_verification(line)
             for sRef in splitRef:
               if not "Unit" in sRef and not " or " in sRef:
-                cond = sRef.replace("_","var_value( "+name+" )")
+                cond = sRef.replace("_",name)
+                #cond = sRef.replace("_","var_value( "+name+" )")
                 lineCond = ([name],"condition",[cond])
                 print(f"lineCond = {lineCond}")
                 
@@ -2210,7 +2235,8 @@ class VirtualMachine:
           line = ([name],"create_unit",[StrLit("None")])
           print(f"line = {line}")
           veriHandler.run_verification(line)
-          ref = typ.refinement.replace("_","var_value( "+name+" )")
+          ref = typ.refinement.replace("_",name)
+          #ref = typ.refinement.replace("_","var_value( "+name+" )")
           if " and " in ref:
             splitRef = ref.split(" and ")
             for sRef in splitRef:
@@ -2255,8 +2281,10 @@ class VirtualMachine:
               veriHandler.run_verification(lineCond)
           
           else:
-            lineCond = ([name],"condition",[ref])
-            print(f"line = {lineCond}")
+            if ref != "":
+              lineCond = ([name],"condition",[ref])
+              veriHandler.run_verification(lineCond)
+              print(f"line = {lineCond}")
             
             
 

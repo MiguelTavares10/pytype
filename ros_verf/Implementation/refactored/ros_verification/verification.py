@@ -52,14 +52,6 @@ def build_initial_context():
     )
 
 
-
-    context["condition"] = VFunction(
-        outputs = [],
-        inputs = [str],
-        pre_condition = [lambda ins: eval(ins[0])],
-        post_condition = [lambda ins, outs: True],
-    )
-
     context["plus_vars"] = VFunction(
         outputs = [TVar],
         inputs = [TVar,TVar,TVar],
@@ -196,7 +188,7 @@ def verify_lines(line: Line, context: dict, funcContext , solver=None):
             if isinstance(context[outputs[0]],GlobalContext):
                 glbctx : GlobalContext = context[outputs[0]]
                 glbctx.add_global_data(inputs[0])
-                print(f"inputs0 = {inputs[0]}")
+                print(f"inputs0 added {inputs[0]}")
             else:
                 raise ValueError(
                     "{} is not defined as variable in the context.".format(outputs[0]))
@@ -258,7 +250,17 @@ def verify_lines(line: Line, context: dict, funcContext , solver=None):
         outputSplitVar = outputVar.split(".")
         outputVar = outputSplitVar[0]
     datatypeOut = context[outputVar].get_datatype()
-    symbolic_inputs = [build_z3_object(i,func,datatypeOut,funcContext) for i in newInputs]
+    
+    if func == "assign":
+        inputVar = inputs[1]
+        if inputVar.__contains__("."):
+            inputSplitVar = inputVar.split(".")
+            inputVar = inputSplitVar[0]
+        datatypeInp = context[inputVar].get_datatype()
+        symbolic_inputs = [build_z3_object(newInputs[0],func,datatypeOut,funcContext)]
+        symbolic_inputs.append(build_z3_object(newInputs[1],func,datatypeInp,funcContext))
+    else: 
+        symbolic_inputs = [build_z3_object(i,func,datatypeOut,funcContext) for i in newInputs]
 
     symbolic_outputs = [build_z3_object(i,func,datatypeOut,funcContext) for i in newOutputs]
 
@@ -272,10 +274,10 @@ def verify_lines(line: Line, context: dict, funcContext , solver=None):
             outputsDatatype = outputsSplit[0]
         dt = context[outputsDatatype].get_datatype() 
         if dt != "None":
-            maintain_func = funcContext[dt].maintain_data(outputs[0],funcContext)
-            assert isinstance(maintain_func, VFunction)
             inp = newInputs[0]
             print(f"inp = {inp}")
+            maintain_func = funcContext[dt].maintain_data(outputs[0],funcContext)
+            assert isinstance(maintain_func, VFunction)
             if inp.__contains__("."):
                 inpS = inp.split(".")
                 inp = inpS[0]
@@ -289,8 +291,8 @@ def verify_lines(line: Line, context: dict, funcContext , solver=None):
                 solver.push()
                 propData: Union[bool,z3.ExprRef]= prop(sym_inp, sym_out)
                 print(propData)
-
                 solver.add(propData)
+
 
         
 
@@ -302,10 +304,11 @@ def verify_lines(line: Line, context: dict, funcContext , solver=None):
         solver.push()
         solver.add(z3.Not(propo))
     
-
-        #print(solver)
         r = solver.check()
         if r == z3.sat:
+            print("#################################################")
+            print(solver)
+            print("#################################################")
             raise ValueError("Precondition {} of {} is not satisfied. Example is: {}".format(prop, func, solver.model()))
         solver.pop()
             
@@ -315,9 +318,65 @@ def verify_lines(line: Line, context: dict, funcContext , solver=None):
         solver.push()
         propData: Union[bool,z3.ExprRef]= prop(symbolic_inputs, symbolic_outputs)
         print(propData)
+        print("##################################solver############################")
+        print(solver)
+        print("##################################solver############################")
+        
         solver.add(propData)
 
     print(COMMAND_LINE_BRACKETS)
+    if func == "add_value" or func == "add_unit" or func == "assign" or func == "plus_vars" or func == "plus_cons" or func == "minus_vars" or func == "minus_var_cons" or func == "minus_cons_var":
+        if dt != "None":
+            maintain_conds = funcContext[dt].keep_done_conds(funcContext)
+            assert isinstance(maintain_conds, VFunction)
+            for propCond in maintain_conds.post_condition:
+                solver.push()
+                propDataCond: Union[bool,z3.ExprRef]= propCond(sym_inp, sym_out)
+                print("######################################")
+                print(f"propDataCond = {propDataCond}")
+                print("######################################")
+                
+                solver.add(z3.Not(propDataCond))
+                r = solver.check()
+                if r == z3.sat:
+                    raise ValueError("Condition {} is not satisfied. Example is: {}".format(propDataCond,solver.model()))
+                solver.pop()
+
+    if func == "assign":
+        inpDt = inputs[1]
+        if inpDt.__contains__("."):
+            inpsSplit = inpDt.split(".")
+            inpDt = inpsSplit[0]
+        if inpDt.__contains__(KEY_NEW_VAR):
+            inpsSplit = inpDt.split(KEY_NEW_VAR)
+            inpDt = inpsSplit[0]
+        dt = context[inpDt].get_datatype() 
+        
+        if dt != "None":
+            maintain_conds = funcContext[dt].keep_done_conds(funcContext)
+            assert isinstance(maintain_conds, VFunction)
+            for propCond in maintain_conds.post_condition:
+                solver.push()
+                inp = newInputs[1]
+                print(f"inp = {inp}")
+                maintain_func = funcContext[dt].maintain_data(outputs[0],funcContext)
+                assert isinstance(maintain_func, VFunction)
+                if inp.__contains__("."):
+                    inpS = inp.split(".")
+                    inp = inpS[0]
+                sym_inp = z3.Const(inp,funcContext[dt].get_data_type()) 
+                sym_out = sym_inp
+                propDataCond: Union[bool,z3.ExprRef]= propCond(sym_inp, sym_out)
+                print("######################################")
+                print(f"propDataCond = {propDataCond}")
+                print("######################################")
+                
+                solver.add(z3.Not(propDataCond))
+                r = solver.check()
+                if r == z3.sat:
+                    raise ValueError("Condition {} is not satisfied. Example is: {}".format(propDataCond,solver.model()))
+                solver.pop()
+
     if func == "create_datatype":
         condFuns = funcContext[inputs[0]].get_annotations()
         for condFun in condFuns:
@@ -331,16 +390,33 @@ def verify_lines(line: Line, context: dict, funcContext , solver=None):
     print(COMMAND_LINE_BRACKETS)
     if func == "assign" or func == "add_value" or func == "plus_vars" or func == "plus_cons" or func == "minus_vars" or func == "minus_cons_var" or func == "minus_var_cons":
         solver.push()
+        print(f"inputs0 = {inputs[0]}")
+        print(f"inputs0 in context ? {inputs[0] in context}")
         if inputs[0] in context:
             gblCtx : GlobalContext = context[inputs[0]]
             globalCond = gblCtx.get_global_data()
+            print(f"globalCond = {globalCond}")
         elif inputs[0].__contains__("."):
             inputSplit = inputs[0].split(".")
             if inputSplit[0] in context:
                 classContext : GlobalContext = context[inputSplit[0]]
                 globalCond = classContext.get_global_data()
+
+        if func == "assign":
+            if inputs[1] in context:
+                gblCtx : GlobalContext = context[inputs[0]]
+                globalCond = globalCond + gblCtx.get_global_data()
+                print(f"globalCond = {globalCond}")
+            elif inputs[1].__contains__("."):
+                inputSplit = inputs[1].split(".")
+                if inputSplit[0] in context:
+                    classContext : GlobalContext = context[inputSplit[0]]
+                    globalCond += classContext.get_global_data()
+        print(f"globalCond = {globalCond}")
         for cond in globalCond:
+            print(cond)
             cond = add_context_names_to_condition(cond,context)
+            print(f"cond = {cond}")
             condsplit = cond.split(" ")
             for condPart in condsplit:
                 if condPart in context:
@@ -367,10 +443,17 @@ def verify_lines(line: Line, context: dict, funcContext , solver=None):
                     if dataSplitted[0] in context:
                         print(f"transform 3 {condPart}")
                         locals()[condPart] = build_z3_object(condPart,"","",funcContext)
-            
+                        cond = cond.replace(condPart,"var_value( " + condPart + " )")
 
             print(cond, "added to solver")
-            solver.add(z3.Not(eval(cond)))
+            if "!=" in cond:
+                cond = cond.replace("!=" ,"==")
+                print(cond)
+                solver.add(eval(cond))
+            else:
+                solver.add(z3.Not(eval(cond)))
+
+
             r = solver.check()
             if r == z3.sat:
                 raise ValueError("Condition {} is not satisfied. Example is: {}".format(cond,solver.model()))
@@ -404,7 +487,9 @@ def verify_lines(line: Line, context: dict, funcContext , solver=None):
                     if input1splitted[0] in context:
                         classContext : GlobalContext = context[input1splitted[0]]
                         classInsContext : InstanceContext = classContext.get_last_instance()
-                        outputLastIns.add_data(classInsContext.get_data(inputs[1]))
+                        data_input = classInsContext.get_data(inputs[1])
+                        print(f"data_input = {data_input}")
+                        outputLastIns.add_data(data_input,outputs[0])
             elif func == "add_value":
                 outputLastIns.add_data(inputs[1],outputs[0])
             elif func == "add_unit" :

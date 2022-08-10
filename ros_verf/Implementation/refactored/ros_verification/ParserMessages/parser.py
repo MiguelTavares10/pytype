@@ -43,7 +43,7 @@ class TreeToROS(Transformer):
                 return "(" + args[0] + ")"
 
         def expr_unop(self,args):
-                return "( - " + args[1].__str__() + " )"
+                return "-" + args[1].__str__() 
 
 # Creation of the parser
 def mk_parser(rule="start"):

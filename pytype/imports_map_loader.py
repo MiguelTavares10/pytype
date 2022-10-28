@@ -18,6 +18,8 @@ def _read_imports_map(options_info_path, open_function):
       if line:
         short_path, path = line.split(" ", 1)
         short_path, _ = os.path.splitext(short_path)  # drop extension
+        print(f"short_path = {short_path} ///////// path = {path}")
+        print(imports_multimap)
         imports_multimap[short_path].add(path)
   # Sort the multimap. Move items with '#' in the base name, generated for
   # analysis results via --api, first, so we prefer them over others.

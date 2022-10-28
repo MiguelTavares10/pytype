@@ -6,7 +6,7 @@ from geometry_msgs.msg import Twist
 
 pub = rospy.Publisher('/cmd_vel', Twist, queue_size=1) 
 x : Annotated[float, "Unit('m/s')"]
-x = 100
+x = 5
 
 move = Twist() 
 move.linear.x = x 

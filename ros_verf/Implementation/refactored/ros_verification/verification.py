@@ -306,6 +306,8 @@ def verify_lines(line: Line, context: dict, funcContext , solver=None):
     
         r = solver.check()
         if r == z3.sat:
+
+            print(line)
             print("#################################################")
             print(solver)
             print("#################################################")
@@ -323,7 +325,7 @@ def verify_lines(line: Line, context: dict, funcContext , solver=None):
         print("##################################solver############################")
         
         solver.add(propData)
-
+        solver.push()
     print(COMMAND_LINE_BRACKETS)
     if func == "add_value" or func == "add_unit" or func == "assign" or func == "plus_vars" or func == "plus_cons" or func == "minus_vars" or func == "minus_var_cons" or func == "minus_cons_var":
         if dt != "None":
@@ -404,7 +406,7 @@ def verify_lines(line: Line, context: dict, funcContext , solver=None):
 
         if func == "assign":
             if inputs[1] in context:
-                gblCtx : GlobalContext = context[inputs[0]]
+                gblCtx : GlobalContext = context[inputs[1]]
                 globalCond = globalCond + gblCtx.get_global_data()
                 print(f"globalCond = {globalCond}")
             elif inputs[1].__contains__("."):

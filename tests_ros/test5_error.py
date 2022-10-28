@@ -1,5 +1,5 @@
-from std_msgs import Float64
+from std_msgs import Int32
 
-time = Float64()
+v = Int32()
 
-time.data = 10
+v.data = 10

@@ -7,10 +7,10 @@ from geometry_msgs.msg import Twist
 
 
 pub = rospy.Publisher('/cmd_vel', Twist, queue_size=1) 
-x : Annotated[float, "Unit('m/s')"]
-x = 5
+y : Annotated[float, "Unit('m/s')"]
+y = 5
 move = Twist() 
-move.angular.x = x # conds on move.linear.x, move.linear.x defined first = no error
+move.linear.y = y # conds on move.linear.x, move.linear.x defined first = no error
 pub.publish(move)
 
 rospy.spin()

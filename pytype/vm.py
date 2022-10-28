@@ -1447,7 +1447,7 @@ class VirtualMachine:
         print(f"line = {line}")
         veriHandler.run_verification(line)
 
-    if self.bin_operator == "__sub__":
+    elif self.bin_operator == "__sub__":
       self.bin_operator = ""
       otherValue, otherTypeVal = self.last_cond_const[-2]
       if typeVal == "Var":
@@ -1463,35 +1463,35 @@ class VirtualMachine:
         line =  [[name], "minus_var_cons",[name,otherValue,value]]
         print(f"line = {line}")
         veriHandler.run_verification(line)
-    
-    annotatedName = name
-    print(f"name = {name} type = {type(name)}")
-    if "." in name:
-      splitName = name.split(".")
-      annotatedName = splitName[0]
+    else:
+      annotatedName = name
+      print(f"name = {name} type = {type(name)}")
+      if "." in name:
+        splitName = name.split(".")
+        annotatedName = splitName[0]
 
-    elif annotHandler.var_is_annotated(annotatedName):
-      print(f"{name} = {self.last_cond_const[-1]}")
-      #TODO: check if the name is already annotated and send it info to verification
-      if typeVal == "Const":
-        cond = ([name],"add_value",[name,value])
-        print(f"cond = {cond}")
-        veriHandler.run_verification(cond)
-      elif typeVal == "Var":
-        cond = ([name],"assign",[name,value])
-        print(f"cond = {cond}")
-        veriHandler.run_verification(cond)
-    
-    folder = "./ros_verf/Implementation/refactored/ros_verification/ROSMessages"
-    caminho = f"{folder}/{value}.msg"
-    print(caminho)
-    if os.path.isfile(caminho) :
-      print(f"é ficheiro , name = {name}")
-      line = ([name],"create_datatype",[value])
-      annotHandler.add_message_annotated(name)
-      veriHandler.run_verification(line)
-      print(line)
+      elif annotHandler.var_is_annotated(annotatedName):
+        print(f"{name} = {self.last_cond_const[-1]}")
+        #TODO: check if the name is already annotated and send it info to verification
+        if typeVal == "Const":
+          cond = ([name],"add_value",[name,value])
+          print(f"cond = {cond}")
+          veriHandler.run_verification(cond)
+        elif typeVal == "Var":
+          cond = ([name],"assign",[name,value])
+          print(f"cond = {cond}")
+          veriHandler.run_verification(cond)
       
+      folder = "../pytype/ros_verf/Implementation/refactored/ros_verification/ROSMessages"
+      caminho = f"{folder}/{value}.msg"
+      print(caminho)
+      if os.path.isfile(caminho) :
+        print(f"é ficheiro , name = {name}")
+        line = ([name],"create_datatype",[value])
+        annotHandler.add_message_annotated(name)
+        veriHandler.run_verification(line)
+        print(line)
+        
 
     return self._pop_and_store(state, op, name, local=True)
 
@@ -1706,7 +1706,7 @@ class VirtualMachine:
         
         veriHandler.run_verification(cond)
     
-    folder = "./ros_verf/Implementation/refactored/ros_verification/ROSMessages"
+    folder = "../pytype/ros_verf/Implementation/refactored/ros_verification/ROSMessages"
     caminho = f"{folder}/{value}.msg"
     print(caminho)
     if os.path.isfile(caminho) :

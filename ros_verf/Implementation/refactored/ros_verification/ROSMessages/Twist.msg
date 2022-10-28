@@ -1,4 +1,4 @@
-#RobotFix# Unit(linear.x) == "m/s" and Unit(linear.y) == "m/s" and Unit(linear.z) == "m/s" and linear.x < 200 and linear.x > 0
+#RobotFix# Unit(linear.x) == "m/s" and Unit(linear.y) == "m/s" and Unit(linear.z) == "m/s" and linear.x < 20 and linear.x > 0
 #RobotFix# Unit(angular.x) == "rad/s" and Unit(angular.y) == "rad/s" and Unit(angular.z) == "rad/s"
 
 [geometry_msgs/Twist]:

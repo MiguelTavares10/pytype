@@ -15,7 +15,7 @@ def transform_name(name):
         return name
 
 def run_prelude():
-        files = os.listdir("./ros_verf/Implementation/refactored/ros_verification/ROSMessages")
+        files = os.listdir("../pytype/ros_verf/Implementation/refactored/ros_verification/ROSMessages")
         new_files = []
         for file in files:
                 new_files.append(file.replace(".msg",""))

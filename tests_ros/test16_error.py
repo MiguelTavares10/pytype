@@ -9,8 +9,8 @@ from geometry_msgs.msg import Twist
 pub = rospy.Publisher('/cmd_vel', Twist, queue_size=1) 
 x : Annotated[float, "Unit('m/s')"]
 z : Annotated[float, "Unit('m/s')"]
-x = 10
-z = -60
+x = 1
+z = -3
 move = Twist() 
 move.linear.x = x + z
 pub.publish(move)
